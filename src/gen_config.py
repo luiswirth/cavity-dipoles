@@ -1,10 +1,11 @@
+import argparse
 import os
 
 import numpy as np
 
 K = 2.0
 SEMIAXES = (4.0, 4.0, 6.0)
-N = 12
+N = 32
 OUT = "out/config.txt"
 
 
@@ -27,27 +28,35 @@ def tangent_frame(n):
     return e1, e2
 
 
-def main():
-    points = fibonacci_sphere(N)  # unit sphere Lambda
+def main(k, semiaxes, n, out):
+    points = fibonacci_sphere(n)  # unit sphere Lambda
     rows = []
     for x in points:
-        n = x
-        e1, e2 = tangent_frame(n)
+        nrm = x
+        e1, e2 = tangent_frame(nrm)
         rows.append(np.concatenate([x, e1, e2]))
     rows = np.stack(rows)
 
-    a, b, c = SEMIAXES
+    a, b, c = semiaxes
 
-    os.makedirs("out", exist_ok=True)
-    with open(OUT, "w") as f:
+    os.makedirs(os.path.dirname(out) or ".", exist_ok=True)
+    with open(out, "w") as f:
         f.write("# k a b c N\n")
-        f.write(f"{K} {a} {b} {c} {N}\n")
+        f.write(f"{k} {a} {b} {c} {n}\n")
         f.write("# x y z  e1x e1y e1z  e2x e2y e2z\n")
         for r in rows:
             f.write(" ".join(f"{v:.15g}" for v in r) + "\n")
 
-    print(f"wrote {OUT}: {N} points")
+    print(f"wrote {out}: {n} points")
 
 
 if __name__ == "__main__":
-    main()
+    p = argparse.ArgumentParser(description="generate shared cavity config")
+    p.add_argument("-n", "--num", type=int, default=N, help="dipole points on Lambda")
+    p.add_argument("-k", type=float, default=K, help="wavenumber")
+    p.add_argument(
+        "--semiaxes", type=float, nargs=3, default=list(SEMIAXES), metavar=("A", "B", "C")
+    )
+    p.add_argument("-o", "--out", default=OUT, help="output config path")
+    args = p.parse_args()
+    main(args.k, tuple(args.semiaxes), args.num, args.out)
