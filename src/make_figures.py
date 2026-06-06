@@ -30,7 +30,7 @@ def main():
     if not args.skip_field:
         if not os.path.exists(FIELD_NPZ):
             print(f"! {FIELD_NPZ} missing -- generate it with maxwellgp "
-                  "examples/cavity_field.py, or pass --skip-field", file=sys.stderr)
+                  "examples/cavity.py field, or pass --skip-field", file=sys.stderr)
             sys.exit(1)
         steps += FIELD
         if not args.skip_anim:

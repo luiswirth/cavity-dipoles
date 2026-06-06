@@ -10,3 +10,4 @@ wheels/
 .venv
 
 out/
+.DS_Store

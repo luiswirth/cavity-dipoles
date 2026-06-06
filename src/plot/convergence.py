@@ -1,3 +1,4 @@
+import argparse
 import csv
 import os
 
@@ -34,7 +35,7 @@ def _epgp_axes(ax, ns, y, color, marker, ylabel, title):
     _grid(ax)
 
 
-def fig_epgp_convergence():
+def fig_epgp_convergence(fmt="svg"):
     e = sorted(read_csv(os.path.join(EPGP, "results.csv")),
                key=lambda r: int(r["n_spectral"]))
     ns = np.array([int(r["n_spectral"]) for r in e])
@@ -45,16 +46,16 @@ def fig_epgp_convergence():
     _epgp_axes(ax, ns, err, C["recip"], "D",
                r"$\|T_{\mathrm{EPGP}}-T_{\mathrm{BEM}}\|/\|T_{\mathrm{BEM}}\|$",
                "EPGP convergence to BEM reference")
-    save(fig, "epgp_vs_bem")
+    save(fig, "epgp_vs_bem", fmt)
 
     fig, ax = plt.subplots(figsize=(6.4, 4.6), layout="constrained")
     _epgp_axes(ax, ns, rec, C["recip"], "D",
                r"$\|T-T^{\!\top}\|/\|T\|$",
                "EPGP reciprocity error")
-    save(fig, "epgp_reciprocity")
+    save(fig, "epgp_reciprocity", fmt)
 
 
-def fig_bem_reciprocity(bem):
+def fig_bem_reciprocity(bem, fmt="svg"):
     fig, ax = plt.subplots(1, 2, figsize=(11, 4.4), layout="constrained")
     cmap = plt.get_cmap("viridis")
 
@@ -88,10 +89,14 @@ def fig_bem_reciprocity(bem):
     _grid(ax[1])
 
     fig.suptitle("BEM reciprocity error", y=1.02, fontsize=14)
-    save(fig, "bem_reciprocity")
+    save(fig, "bem_reciprocity", fmt)
 
 
 def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--format", choices=["svg", "png"], default="svg")
+    fmt = ap.parse_args().format
+
     setup_style()
     os.makedirs(FIGS, exist_ok=True)
     bem = [{"p": int(r["p"]), "m": int(r["m"]), "dofs": int(r["dofs"]),
@@ -99,8 +104,8 @@ def main():
            for r in read_csv(os.path.join(BEM, "results.csv"))]
     ref = min(bem, key=lambda r: r["recip"])
 
-    fig_epgp_convergence()
-    fig_bem_reciprocity(bem)
+    fig_epgp_convergence(fmt)
+    fig_bem_reciprocity(bem, fmt)
     stale = ("h_convergence", "p_convergence", "reciprocity", "svd_spectrum",
              "bem_validity", "bem_self_convergence", "preview", "all_preview",
              "epgp_convergence", "operator_spectrum")

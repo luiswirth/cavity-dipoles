@@ -38,8 +38,8 @@ def setup_style():
     })
 
 
-def save(fig, name):
-    fig.savefig(os.path.join(FIGS, f"{name}.svg"))
+def save(fig, name, fmt="svg", dpi=200):
+    fig.savefig(os.path.join(FIGS, f"{name}.{fmt}"), dpi=dpi)
     plt.close(fig)
 
 
