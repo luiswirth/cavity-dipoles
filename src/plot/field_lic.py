@@ -83,8 +83,7 @@ def main():
     fig, ax = plt.subplots(1, 2, figsize=FIGSIZE)
     panel(ax[0], S, "Escat", "scattered field")
     panel(ax[1], S, "Etot", "total field")
-    fig.suptitle("EP-GP cavity field (LIC; brightness = flow, colour = $|E|$)",
-                 y=0.98, fontsize=14)
+    fig.suptitle("EPGP cavity field LIC", y=0.98, fontsize=14)
     os.makedirs(FIGS, exist_ok=True)
     out = os.path.join(FIGS, "field_lic.png")
     fig.savefig(out, dpi=220)

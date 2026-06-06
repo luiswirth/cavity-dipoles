@@ -22,7 +22,7 @@ def _epgp_axes(ax, ns, y, color, marker, ylabel, title):
     ax.plot(ns, y, marker + "-", color=color)
     ax.set_xscale("log", base=2)
     ax.set_yscale("log")
-    ax.set_xlabel(r"number of plane waves $n_{\mathrm{spectral}}$")
+    ax.set_xlabel(r"$n_\mathrm{spectral}$")
     ax.set_ylabel(ylabel)
     ax.set_title(title)
 
@@ -35,19 +35,19 @@ def fig_epgp_convergence():
     rec = np.array([max(float(r["recip"]), FLOOR) for r in e])
 
     fig, ax = plt.subplots(figsize=(6.4, 4.6))
-    _epgp_axes(ax, ns, err, C["epgp"], "o",
-               r"$\|T_{\mathrm{EP\text{-}GP}}-T_{\mathrm{BEM}}\|/\|T_{\mathrm{BEM}}\|$",
-               "EP-GP convergence to the BEM reference")
+    _epgp_axes(ax, ns, err, C["recip"], "s",
+               r"$\|T_{\mathrm{EPGP}}-T_{\mathrm{BEM}}\|/\|T_{\mathrm{BEM}}\|$",
+               "EPGP convergence to BEM reference")
     save(fig, "epgp_vs_bem")
 
     fig, ax = plt.subplots(figsize=(6.4, 4.6))
     _epgp_axes(ax, ns, rec, C["recip"], "s",
                r"$\|T-T^{\!\top}\|/\|T\|$",
-               "EP-GP reciprocity error")
+               "EPGP reciprocity error")
     save(fig, "epgp_reciprocity")
 
 
-def fig_bem_validity(bem):
+def fig_bem_reciprocity(bem):
     fig, ax = plt.subplots(1, 2, figsize=(11, 4.4))
     cmap = plt.get_cmap("viridis")
 
@@ -76,8 +76,8 @@ def fig_bem_validity(bem):
     ax[1].set_title(r"$p$-refinement"); ax[1].legend(frameon=False)
     ax[1].set_xticks(sorted({r["p"] for r in bem}))
 
-    fig.suptitle("BEM validity: reciprocity error (reference-free)", y=1.02, fontsize=14)
-    save(fig, "bem_validity")
+    fig.suptitle("BEM reciprocity error", y=1.02, fontsize=14)
+    save(fig, "bem_reciprocity")
 
 
 def main():
@@ -89,9 +89,9 @@ def main():
     ref = min(bem, key=lambda r: r["recip"])
 
     fig_epgp_convergence()
-    fig_bem_validity(bem)
+    fig_bem_reciprocity(bem)
     stale = ("h_convergence", "p_convergence", "reciprocity", "svd_spectrum",
-             "bem_reciprocity", "bem_self_convergence", "preview", "all_preview",
+             "bem_validity", "bem_self_convergence", "preview", "all_preview",
              "epgp_convergence", "operator_spectrum")
     for f in os.listdir(FIGS):
         if f.rsplit(".", 1)[0] in stale:
