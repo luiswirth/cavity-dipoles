@@ -18,13 +18,20 @@ def read_csv(path):
         return list(csv.DictReader(f))
 
 
+def _grid(ax):
+    ax.grid(True, which="major", alpha=0.35)
+    ax.grid(True, which="minor", alpha=0.12)
+    ax.margins(x=0.04, y=0.08)
+
+
 def _epgp_axes(ax, ns, y, color, marker, ylabel, title):
-    ax.plot(ns, y, marker + "-", color=color)
+    ax.plot(ns, y, marker + "-", color=color, mec="white", mew=1.0, markersize=8)
     ax.set_xscale("log", base=2)
     ax.set_yscale("log")
     ax.set_xlabel(r"$n_\mathrm{spectral}$")
     ax.set_ylabel(ylabel)
     ax.set_title(title)
+    _grid(ax)
 
 
 def fig_epgp_convergence():
@@ -34,13 +41,13 @@ def fig_epgp_convergence():
     err = np.array([max(float(r["err_vs_bem_ref"]), FLOOR) for r in e])
     rec = np.array([max(float(r["recip"]), FLOOR) for r in e])
 
-    fig, ax = plt.subplots(figsize=(6.4, 4.6))
+    fig, ax = plt.subplots(figsize=(6.4, 4.6), layout="constrained")
     _epgp_axes(ax, ns, err, C["recip"], "s",
                r"$\|T_{\mathrm{EPGP}}-T_{\mathrm{BEM}}\|/\|T_{\mathrm{BEM}}\|$",
                "EPGP convergence to BEM reference")
     save(fig, "epgp_vs_bem")
 
-    fig, ax = plt.subplots(figsize=(6.4, 4.6))
+    fig, ax = plt.subplots(figsize=(6.4, 4.6), layout="constrained")
     _epgp_axes(ax, ns, rec, C["recip"], "s",
                r"$\|T-T^{\!\top}\|/\|T\|$",
                "EPGP reciprocity error")
@@ -48,7 +55,7 @@ def fig_epgp_convergence():
 
 
 def fig_bem_reciprocity(bem):
-    fig, ax = plt.subplots(1, 2, figsize=(11, 4.4))
+    fig, ax = plt.subplots(1, 2, figsize=(11, 4.4), layout="constrained")
     cmap = plt.get_cmap("viridis")
 
     ps = sorted({r["p"] for r in bem})
@@ -59,9 +66,10 @@ def fig_bem_reciprocity(bem):
             continue
         col = cmap(i / max(len(ps) - 1, 1))
         ax[0].loglog([r["dofs"] for r in rows], [r["recip"] for r in rows],
-                     "o-", color=col, label=f"$p={p}$")
+                     "o-", color=col, mec="white", mew=0.8, label=f"$p={p}$")
     ax[0].set_xlabel("# DOFs"); ax[0].set_ylabel(r"$\|T-T^{\!\top}\|/\|T\|$")
     ax[0].set_title(r"$h$-refinement"); ax[0].legend(frameon=False, ncol=2)
+    _grid(ax[0])
 
     ms = sorted({r["m"] for r in bem})
     for i, m in enumerate(ms):
@@ -71,10 +79,11 @@ def fig_bem_reciprocity(bem):
             continue
         col = cmap(i / max(len(ms) - 1, 1))
         ax[1].semilogy([r["p"] for r in rows], [r["recip"] for r in rows],
-                       "D-", color=col, label=f"$m={m}$")
+                       "D-", color=col, mec="white", mew=0.8, label=f"$m={m}$")
     ax[1].set_xlabel(r"polynomial degree $p$"); ax[1].set_ylabel(r"$\|T-T^{\!\top}\|/\|T\|$")
     ax[1].set_title(r"$p$-refinement"); ax[1].legend(frameon=False)
     ax[1].set_xticks(sorted({r["p"] for r in bem}))
+    _grid(ax[1])
 
     fig.suptitle("BEM reciprocity error", y=1.02, fontsize=14)
     save(fig, "bem_reciprocity")
