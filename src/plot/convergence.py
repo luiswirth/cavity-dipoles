@@ -42,13 +42,13 @@ def fig_epgp_convergence():
     rec = np.array([max(float(r["recip"]), FLOOR) for r in e])
 
     fig, ax = plt.subplots(figsize=(6.4, 4.6), layout="constrained")
-    _epgp_axes(ax, ns, err, C["recip"], "s",
+    _epgp_axes(ax, ns, err, C["recip"], "D",
                r"$\|T_{\mathrm{EPGP}}-T_{\mathrm{BEM}}\|/\|T_{\mathrm{BEM}}\|$",
                "EPGP convergence to BEM reference")
     save(fig, "epgp_vs_bem")
 
     fig, ax = plt.subplots(figsize=(6.4, 4.6), layout="constrained")
-    _epgp_axes(ax, ns, rec, C["recip"], "s",
+    _epgp_axes(ax, ns, rec, C["recip"], "D",
                r"$\|T-T^{\!\top}\|/\|T\|$",
                "EPGP reciprocity error")
     save(fig, "epgp_reciprocity")
@@ -61,14 +61,15 @@ def fig_bem_reciprocity(bem):
     ps = sorted({r["p"] for r in bem})
     for i, p in enumerate(ps):
         rows = sorted((r for r in bem if r["p"] == p and r["recip"] > 0),
-                      key=lambda r: r["dofs"])
+                      key=lambda r: r["m"])
         if len(rows) < 2:
             continue
         col = cmap(i / max(len(ps) - 1, 1))
-        ax[0].loglog([r["dofs"] for r in rows], [r["recip"] for r in rows],
-                     "o-", color=col, mec="white", mew=0.8, label=f"$p={p}$")
-    ax[0].set_xlabel("# DOFs"); ax[0].set_ylabel(r"$\|T-T^{\!\top}\|/\|T\|$")
+        ax[0].semilogy([r["m"] for r in rows], [r["recip"] for r in rows],
+                       "D-", color=col, mec="white", mew=0.8, label=f"$p={p}$")
+    ax[0].set_xlabel(r"mesh level $m$"); ax[0].set_ylabel(r"$\|T-T^{\!\top}\|/\|T\|$")
     ax[0].set_title(r"$h$-refinement"); ax[0].legend(frameon=False, ncol=2)
+    ax[0].set_xticks(sorted({r["m"] for r in bem}))
     _grid(ax[0])
 
     ms = sorted({r["m"] for r in bem})
