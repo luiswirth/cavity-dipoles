@@ -27,7 +27,7 @@ def aggregate_bem():
     info = read_manifest()
     runs = []
     for (p, m), meta in info.items():
-        path = os.path.join(BEM, f"T_bem_ell_p{p}_m{m}.dat")
+        path = os.path.join(BEM, f"T_bem_p{p}_m{m}.dat")
         if not os.path.exists(path):
             continue
         T = load_bem(path)

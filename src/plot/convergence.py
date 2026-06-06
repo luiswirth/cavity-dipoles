@@ -58,32 +58,33 @@ def fig_bem_reciprocity(bem):
     fig, ax = plt.subplots(1, 2, figsize=(11, 4.4), layout="constrained")
     cmap = plt.get_cmap("viridis")
 
-    ps = sorted({r["p"] for r in bem})
-    for i, p in enumerate(ps):
+    ms_all = sorted({r["m"] for r in bem})
+    ps_all = sorted({r["p"] for r in bem})
+
+    for i, p in enumerate(ps_all):
         rows = sorted((r for r in bem if r["p"] == p and r["recip"] > 0),
                       key=lambda r: r["m"])
         if len(rows) < 2:
             continue
-        col = cmap(i / max(len(ps) - 1, 1))
         ax[0].semilogy([r["m"] for r in rows], [r["recip"] for r in rows],
-                       "D-", color=col, mec="white", mew=0.8, label=f"$p={p}$")
+                       "D-", color=cmap(i / max(len(ps_all) - 1, 1)),
+                       mec="white", mew=0.8, label=f"$p={p}$")
     ax[0].set_xlabel(r"mesh level $m$"); ax[0].set_ylabel(r"$\|T-T^{\!\top}\|/\|T\|$")
     ax[0].set_title(r"$h$-refinement"); ax[0].legend(frameon=False, ncol=2)
-    ax[0].set_xticks(sorted({r["m"] for r in bem}))
+    ax[0].set_xticks(ms_all)
     _grid(ax[0])
 
-    ms = sorted({r["m"] for r in bem})
-    for i, m in enumerate(ms):
+    for i, m in enumerate(ms_all):
         rows = sorted((r for r in bem if r["m"] == m and r["recip"] > 0),
                       key=lambda r: r["p"])
         if len(rows) < 2:
             continue
-        col = cmap(i / max(len(ms) - 1, 1))
         ax[1].semilogy([r["p"] for r in rows], [r["recip"] for r in rows],
-                       "D-", color=col, mec="white", mew=0.8, label=f"$m={m}$")
+                       "D-", color=cmap(i / max(len(ms_all) - 1, 1)),
+                       mec="white", mew=0.8, label=f"$m={m}$")
     ax[1].set_xlabel(r"polynomial degree $p$"); ax[1].set_ylabel(r"$\|T-T^{\!\top}\|/\|T\|$")
     ax[1].set_title(r"$p$-refinement"); ax[1].legend(frameon=False)
-    ax[1].set_xticks(sorted({r["p"] for r in bem}))
+    ax[1].set_xticks(ps_all)
     _grid(ax[1])
 
     fig.suptitle("BEM reciprocity error", y=1.02, fontsize=14)
