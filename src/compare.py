@@ -4,23 +4,19 @@ import numpy as np
 
 
 def load_bem(path):
-    """Load a BEM T-matrix (.dat: alternating real/imag columns)."""
     data = np.loadtxt(path)
     return data[:, 0::2] + 1j * data[:, 1::2]
 
 
 def load_epgp(path):
-    """Load an EP-GP T-matrix (.npy complex array)."""
     return np.load(path)
 
 
 def reciprocity(T):
-    """||T - T^T|| / ||T||: EM-reciprocity violation (self-consistency proxy)."""
     return np.linalg.norm(T - T.T) / np.linalg.norm(T)
 
 
 def metrics(Ta, Tb):
-    """Compare two operators. Tb is the reference for the relative error."""
     return {
         "rel_err": np.linalg.norm(Ta - Tb) / np.linalg.norm(Tb),
         "recip_a": reciprocity(Ta),

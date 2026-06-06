@@ -29,7 +29,7 @@ def tangent_frame(n):
 
 
 def main(k, semiaxes, n, out):
-    points = fibonacci_sphere(n)  # unit sphere Lambda
+    points = fibonacci_sphere(n)
     rows = []
     for x in points:
         nrm = x
