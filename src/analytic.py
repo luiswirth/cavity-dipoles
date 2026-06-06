@@ -1,55 +1,65 @@
 import numpy as np
 
 
-def green_scalar(r: float, k: float):
+def green_scalar(r, k):
     return np.exp(1j * k * r) / (4 * np.pi * r)
 
 
-def green_dyadic(r: np.ndarray, k: float) -> np.ndarray:
-    rnorm = np.linalg.norm(r)
-    rhat = r / rnorm
-
-    Phi = green_scalar(rnorm, k)
-
-    id = np.eye(3)
-    rr = np.outer(rhat, rhat)  # r-hat dyad, shape (3,3)
-
-    transverse = k**2 + 1j * k / rnorm - 1 / rnorm**2
-    radial = -(k**2) - 3j * k / rnorm + 3 / rnorm**2
-
-    return (1j / k) * Phi * (transverse * id + radial * rr)
+def green_dyadic(rv, k):
+    r = np.linalg.norm(rv)
+    rhat = rv / r
+    phi = green_scalar(r, k)
+    transverse = k**2 + 1j * k / r - 1 / r**2
+    radial = -(k**2) - 3j * k / r + 3 / r**2
+    return (1j / k) * phi * (transverse * np.eye(3) + radial * np.outer(rhat, rhat))
 
 
-def incident_field(x: np.ndarray, z: np.ndarray, k: float, p: np.ndarray) -> np.ndarray:
+def incident_field(x, z, k, p):
     return green_dyadic(x - z, k) @ p
 
 
-ellipsoid_semiaxes = [4, 4, 6]
-
-
-def ellipsoid_point(theta: float, phi: float) -> np.ndarray:
-    a = ellipsoid_semiaxes
-    x = np.array(
-        [
-            a[0] * np.sin(theta) * np.cos(phi),
-            a[1] * np.sin(theta) * np.sin(phi),
-            a[2] * np.cos(theta),
-        ]
+def incident_field_batch(X, z, k, p):
+    rv = X - z
+    r = np.linalg.norm(rv, axis=1)
+    rhat = rv / r[:, None]
+    phi = np.exp(1j * k * r) / (4 * np.pi * r)
+    transverse = k**2 + 1j * k / r - 1 / r**2
+    radial = -(k**2) - 3j * k / r + 3 / r**2
+    rhat_p = rhat @ p
+    return (1j / k) * phi[:, None] * (
+        transverse[:, None] * p + radial[:, None] * rhat_p[:, None] * rhat
     )
-    return x
 
 
-def ellipsoid_normal(x: np.ndarray) -> np.ndarray:
-    a = ellipsoid_semiaxes
-    n = np.array([2 * x[0] / a[0] ** 2, 2 * x[1] / a[1] ** 2, 2 * x[2] / a[2] ** 2])
-    n /= np.linalg.norm(n)
-    return n
+def tangential_projection(v, n):
+    return v - np.dot(v, n) * n
 
 
-def compute_boundary_forcing(
-    theta: float, phi: float, z: np.ndarray, k: float, p: np.ndarray
-) -> np.ndarray:
-    x = ellipsoid_point(theta, phi)
-    Ei = incident_field(x, z, k, p)
-    n = ellipsoid_normal(x)
-    return -np.cross(n, np.cross(Ei, n))
+def fibonacci_sphere(n):
+    i = np.arange(n) + 0.5
+    phi = np.arccos(1.0 - 2.0 * i / n)
+    theta = np.pi * (1.0 + 5.0**0.5) * i
+    return np.stack(
+        [np.sin(phi) * np.cos(theta), np.sin(phi) * np.sin(theta), np.cos(phi)], axis=1
+    )
+
+
+def ellipsoid_point(theta, phi, semiaxes):
+    a = np.asarray(semiaxes)
+    return a * np.array(
+        [np.sin(theta) * np.cos(phi), np.sin(theta) * np.sin(phi), np.cos(theta)]
+    )
+
+
+def ellipsoid_normal(x, semiaxes):
+    n = np.asarray(x) / np.asarray(semiaxes) ** 2
+    return n / np.linalg.norm(n)
+
+
+def boundary_collocation(semiaxes, n):
+    semiaxes = np.asarray(semiaxes)
+    u = fibonacci_sphere(n)
+    points = u * semiaxes
+    normals = points / semiaxes**2
+    normals = normals / np.linalg.norm(normals, axis=1, keepdims=True)
+    return points, normals
