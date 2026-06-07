@@ -24,9 +24,13 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--skip-anim", action="store_true")
     ap.add_argument("--skip-field", action="store_true")
+    ap.add_argument("--png", action="store_true",
+                    help="also emit PNG versions of the line plots (default: SVG only)")
     args = ap.parse_args()
 
     steps = DATA + BENCH
+    if args.png:
+        steps += [["src/plot/convergence.py", "--format", "png"]]
     if not args.skip_field:
         if not os.path.exists(FIELD_NPZ):
             print(f"! {FIELD_NPZ} missing -- generate it with maxwellgp "
