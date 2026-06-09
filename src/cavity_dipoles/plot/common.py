@@ -6,9 +6,8 @@ import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import numpy as np
 
-ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-FIGS = os.path.join(ROOT, "out", "figs")
-DEFAULT_NPZ = os.path.join(ROOT, "out", "field", "field_slice.npz")
+FIGS = os.path.join("out", "figs")
+DEFAULT_NPZ = os.path.join("out", "field", "field_slice.npz")
 FIGSIZE = (10.5, 6.2)
 COMP = 0
 COMP_LABEL = {0: "x", 1: "y", 2: "z"}
@@ -43,19 +42,26 @@ def save(fig, name, fmt="svg", dpi=200):
     plt.close(fig)
 
 
-def save_webp(frames, out, fps, lossless=True):
+def save_webp(frames, out, fps, lossless=True, quality=100, max_width=None):
     os.makedirs(os.path.dirname(out), exist_ok=True)
+    if max_width and frames[0].width > max_width:
+        from PIL import Image
+        s = max_width / frames[0].width
+        size = (max_width, round(frames[0].height * s))
+        frames = [f.resize(size, Image.LANCZOS) for f in frames]
+    dur = round(1000 / fps)
     frames[0].save(out, format="WEBP", save_all=True, append_images=frames[1:],
-                   duration=int(1000 / fps), loop=0, lossless=lossless,
-                   quality=100, method=6)
+                   duration=dur, loop=0, lossless=lossless,
+                   quality=quality, method=6)
 
 
 def load_slice(path):
     d = np.load(path)
     a, _, c = d["semiaxes"]
+    Escat, Etot = d["Escat"], d["Etot"]
     return {"xs": d["xs"], "zs": d["zs"], "mask": d["mask"],
             "a": float(a), "c": float(c), "src": d["source"],
-            "Escat": d["Escat"], "Etot": d["Etot"]}
+            "Einc": Etot - Escat, "Escat": Escat, "Etot": Etot}
 
 
 def emag(E):

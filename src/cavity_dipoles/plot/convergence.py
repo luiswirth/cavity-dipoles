@@ -5,10 +5,10 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 
-from common import FIGS, ROOT, save, setup_style
+from .common import FIGS, save, setup_style
 
-BEM = os.path.join(ROOT, "out", "bem")
-EPGP = os.path.join(ROOT, "out", "epgp")
+BEM = os.path.join("out", "bem")
+EPGP = os.path.join("out", "epgp")
 FLOOR = 1e-16
 
 C = {"epgp": "#1f77b4", "recip": "#d62728"}
@@ -29,7 +29,7 @@ def _epgp_axes(ax, ns, y, color, marker, ylabel, title):
     ax.plot(ns, y, marker + "-", color=color, mec="white", mew=1.0, markersize=8)
     ax.set_xscale("log", base=2)
     ax.set_yscale("log")
-    ax.set_xlabel(r"$n_\mathrm{spectral}$")
+    ax.set_xlabel(r"$n_\mathrm{spec}$")
     ax.set_ylabel(ylabel)
     ax.set_title(title)
     _grid(ax)
@@ -44,15 +44,54 @@ def fig_epgp_convergence(fmt="svg"):
 
     fig, ax = plt.subplots(figsize=(6.4, 4.6), layout="constrained")
     _epgp_axes(ax, ns, err, C["recip"], "D",
-               r"$\|T_{\mathrm{EPGP}}-T_{\mathrm{BEM}}\|/\|T_{\mathrm{BEM}}\|$",
+               r"$\varepsilon = \|\mathbf{T}_{\mathrm{EPGP}}-\mathbf{T}_{\mathrm{BEM}}\|/\|\mathbf{T}_{\mathrm{BEM}}\|$",
                "EPGP convergence to BEM reference")
     save(fig, "epgp_vs_bem", fmt)
 
     fig, ax = plt.subplots(figsize=(6.4, 4.6), layout="constrained")
     _epgp_axes(ax, ns, rec, C["recip"], "D",
-               r"$\|T-T^{\!\top}\|/\|T\|$",
+               r"$\rho = \|\mathbf{T}-\mathbf{T}^{\!\top}\|/\|\mathbf{T}\|$",
                "EPGP reciprocity error")
     save(fig, "epgp_reciprocity", fmt)
+
+
+def fig_ksweep(fmt="svg"):
+    path = os.path.join(EPGP, "ksweep.csv")
+    if not os.path.exists(path):
+        return
+    from matplotlib.lines import Line2D
+
+    rows = read_csv(path)
+    ks = sorted({float(r["k"]) for r in rows})
+    R = float(rows[0]["R"])
+    cmap = plt.get_cmap("viridis")
+
+    fig, ax = plt.subplots(figsize=(6.8, 4.6), layout="constrained")
+    for i, k in enumerate(ks):
+        sel = sorted((r for r in rows if float(r["k"]) == k),
+                     key=lambda r: int(r["n_spectral"]))
+        ns = np.array([int(r["n_spectral"]) for r in sel])
+        rec = np.array([max(float(r["recip"]), FLOOR) for r in sel])
+        color = cmap(i / max(len(ks) - 1, 1))
+        ax.plot(ns, rec, "D-", color=color, mec="white", mew=0.8,
+                markersize=6, label=f"$k={k:g}$")
+        # band-limit prediction: drop at sqrt(n_spec) = k R, i.e. n_spec = (k R)^2
+        ax.axvline((k * R) ** 2, color=color, ls=":", lw=1.6)
+
+    ax.set_xscale("log", base=2)
+    ax.set_yscale("log")
+    ax.set_xlabel(r"$n_\mathrm{spec}$")
+    ax.set_ylabel(r"$\rho = \|\mathbf{T}-\mathbf{T}^{\!\top}\|/\|\mathbf{T}\|$")
+
+    handles = [Line2D([0], [0], color=cmap(i / max(len(ks) - 1, 1)),
+                      marker="D", mec="white", mew=0.8, markersize=6)
+               for i in range(len(ks))]
+    labels = [f"$k={k:g}$" for k in ks]
+    handles.append(Line2D([0], [0], color="0.35", ls=":", lw=1.6))
+    labels.append(r"$n_\mathrm{spec}=(kR)^2$")
+    ax.legend(handles, labels, frameon=False, ncol=2)
+    _grid(ax)
+    save(fig, "epgp_ksweep", fmt)
 
 
 def fig_bem_reciprocity(bem, fmt="svg"):
@@ -70,7 +109,7 @@ def fig_bem_reciprocity(bem, fmt="svg"):
         ax[0].semilogy([r["m"] for r in rows], [r["recip"] for r in rows],
                        "D-", color=cmap(i / max(len(ps_all) - 1, 1)),
                        mec="white", mew=0.8, label=f"$p={p}$")
-    ax[0].set_xlabel(r"mesh level $m$"); ax[0].set_ylabel(r"$\|T-T^{\!\top}\|/\|T\|$")
+    ax[0].set_xlabel(r"mesh level $m$"); ax[0].set_ylabel(r"$\rho = \|\mathbf{T}-\mathbf{T}^{\!\top}\|/\|\mathbf{T}\|$")
     ax[0].set_title(r"$h$-refinement"); ax[0].legend(frameon=False, ncol=2)
     ax[0].set_xticks(ms_all)
     _grid(ax[0])
@@ -83,7 +122,7 @@ def fig_bem_reciprocity(bem, fmt="svg"):
         ax[1].semilogy([r["p"] for r in rows], [r["recip"] for r in rows],
                        "D-", color=cmap(i / max(len(ms_all) - 1, 1)),
                        mec="white", mew=0.8, label=f"$m={m}$")
-    ax[1].set_xlabel(r"polynomial degree $p$"); ax[1].set_ylabel(r"$\|T-T^{\!\top}\|/\|T\|$")
+    ax[1].set_xlabel(r"polynomial degree $p$"); ax[1].set_ylabel(r"$\rho = \|\mathbf{T}-\mathbf{T}^{\!\top}\|/\|\mathbf{T}\|$")
     ax[1].set_title(r"$p$-refinement"); ax[1].legend(frameon=False)
     ax[1].set_xticks(ps_all)
     _grid(ax[1])
@@ -105,6 +144,7 @@ def main():
     ref = min(bem, key=lambda r: r["recip"])
 
     fig_epgp_convergence(fmt)
+    fig_ksweep(fmt)
     fig_bem_reciprocity(bem, fmt)
     stale = ("h_convergence", "p_convergence", "reciprocity", "svd_spectrum",
              "bem_validity", "bem_self_convergence", "preview", "all_preview",

@@ -2,9 +2,18 @@
 name = "cavity-dipoles"
 version = "0.1.0"
 description = ""
-readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "numpy>=2.4.4",
     "matplotlib>=3.10.7",
+    "jax>=0.8.1",
+    "optax>=0.2.6",
+    "maxwellgp",
 ]
+
+[build-system]
+requires = ["uv_build>=0.11.17,<0.12.0"]
+build-backend = "uv_build"
+
+[tool.uv.sources]
+maxwellgp = { git = "ssh://git@github.com/luiswirth/maxwellgp.git", branch = "main" }

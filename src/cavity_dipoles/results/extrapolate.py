@@ -3,10 +3,9 @@ import os
 
 import numpy as np
 
-from compare import load_bem, reciprocity
+from .compare import load_bem, reciprocity
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-BEM = os.path.join(ROOT, "out", "bem")
+BEM = os.path.join("out", "bem")
 
 
 def save_bem(path, T):

@@ -5,11 +5,13 @@ import matplotlib.cm as cm
 import matplotlib.pyplot as plt
 import numpy as np
 
-from common import (DEFAULT_NPZ, FIGS, FIGSIZE, align_phase, clip_vmax,
-                    decorate, emag, load_slice, setup_style)
+from .common import (DEFAULT_NPZ, FIGS, align_phase, clip_vmax,
+                     decorate, emag, load_slice, setup_style)
 
 COMP_IN = (0, 2)
 FINE = 1100
+FINE_ANIM = 560  # lower LIC resolution for animation (per-frame recompute)
+FIGSIZE3 = (15.0, 6.2)
 
 
 def _sample(A, x, y):
@@ -54,19 +56,24 @@ def _equalize(tex, mask):
     return t
 
 
-def panel(ax, S, key, title):
-    E = align_phase(S[key], S["mask"])
-    u = np.where(S["mask"], np.real(E[..., COMP_IN[0]]), 0.0)
-    v = np.where(S["mask"], np.real(E[..., COMP_IN[1]]), 0.0)
-    uf, vf = _upsample(u, FINE), _upsample(v, FINE)
-    magf = _upsample(emag(E), FINE)
-    maskf = _upsample(S["mask"].astype(float), FINE) > 0.5
+def lic_rgb(E, mask, fine=FINE):
+    """LIC-textured, magnitude-shaded RGB image of the in-plane field E."""
+    u = np.where(mask, np.real(E[..., COMP_IN[0]]), 0.0)
+    v = np.where(mask, np.real(E[..., COMP_IN[1]]), 0.0)
+    uf, vf = _upsample(u, fine), _upsample(v, fine)
+    magf = _upsample(emag(E), fine)
+    maskf = _upsample(mask.astype(float), fine) > 0.5
     uf[~maskf] = 0.0; vf[~maskf] = 0.0
 
     tex = _equalize(lic(uf, vf), maskf)
     base = cm.magma(np.clip(magf / clip_vmax(magf, maskf), 0.0, 1.0))[..., :3]
     rgb = base * (0.08 + 0.92 * tex)[..., None]
     rgb[~maskf] = 1.0
+    return rgb
+
+
+def panel(ax, S, key, title, fine=FINE):
+    rgb = lic_rgb(align_phase(S[key], S["mask"]), S["mask"], fine)
     ax.imshow(rgb, origin="lower",
               extent=[S["xs"][0], S["xs"][-1], S["zs"][0], S["zs"][-1]],
               aspect="equal", interpolation="bilinear")
@@ -80,9 +87,10 @@ def main():
     args = ap.parse_args()
     S = load_slice(args.npz)
 
-    fig, ax = plt.subplots(1, 2, figsize=FIGSIZE)
-    panel(ax[0], S, "Escat", "scattered field")
-    panel(ax[1], S, "Etot", "total field")
+    fig, ax = plt.subplots(1, 3, figsize=FIGSIZE3)
+    panel(ax[0], S, "Einc", r"incident field $\mathbf{E}^{\mathrm{i}}$")
+    panel(ax[1], S, "Escat", r"scattered field $\mathbf{E}^{\mathrm{s}}$")
+    panel(ax[2], S, "Etot", r"total field $\mathbf{E}^{\mathrm{tot}}$")
     fig.suptitle("EPGP cavity field LIC", y=0.98, fontsize=14)
     os.makedirs(FIGS, exist_ok=True)
     out = os.path.join(FIGS, "field_lic.png")

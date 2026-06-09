@@ -5,11 +5,10 @@ import re
 
 import numpy as np
 
-from compare import load_bem, load_epgp, reciprocity
+from .compare import load_bem, load_epgp, reciprocity
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-BEM = os.path.join(ROOT, "out", "bem")
-EPGP = os.path.join(ROOT, "out", "epgp")
+BEM = os.path.join("out", "bem")
+EPGP = os.path.join("out", "epgp")
 
 
 def read_manifest():

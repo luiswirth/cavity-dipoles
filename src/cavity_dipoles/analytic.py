@@ -33,33 +33,3 @@ def incident_field_batch(X, z, k, p):
 
 def tangential_projection(v, n):
     return v - np.dot(v, n) * n
-
-
-def fibonacci_sphere(n):
-    i = np.arange(n) + 0.5
-    phi = np.arccos(1.0 - 2.0 * i / n)
-    theta = np.pi * (1.0 + 5.0**0.5) * i
-    return np.stack(
-        [np.sin(phi) * np.cos(theta), np.sin(phi) * np.sin(theta), np.cos(phi)], axis=1
-    )
-
-
-def ellipsoid_point(theta, phi, semiaxes):
-    a = np.asarray(semiaxes)
-    return a * np.array(
-        [np.sin(theta) * np.cos(phi), np.sin(theta) * np.sin(phi), np.cos(theta)]
-    )
-
-
-def ellipsoid_normal(x, semiaxes):
-    n = np.asarray(x) / np.asarray(semiaxes) ** 2
-    return n / np.linalg.norm(n)
-
-
-def boundary_collocation(semiaxes, n):
-    semiaxes = np.asarray(semiaxes)
-    u = fibonacci_sphere(n)
-    points = u * semiaxes
-    normals = points / semiaxes**2
-    normals = normals / np.linalg.norm(normals, axis=1, keepdims=True)
-    return points, normals
