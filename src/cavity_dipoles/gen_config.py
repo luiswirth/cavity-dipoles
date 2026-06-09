@@ -6,7 +6,7 @@ import numpy as np
 K = 2.0
 SEMIAXES = (4.0, 4.0, 6.0)
 N = 32
-OUT = "out/config.txt"
+OUT = "res/config.txt"
 
 
 def fibonacci_sphere(n):

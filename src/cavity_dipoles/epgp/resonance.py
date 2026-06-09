@@ -57,7 +57,7 @@ def local_minima(ks, s):
 
 def main():
     ap = argparse.ArgumentParser(description="PEC cavity resonance locator")
-    ap.add_argument("config", nargs="?", default="out/config.txt")
+    ap.add_argument("config", nargs="?", default="res/config.txt")
     ap.add_argument("--kmin", type=float, default=0.3)
     ap.add_argument("--kmax", type=float, default=3.2)
     ap.add_argument("--dk", type=float, default=0.01)

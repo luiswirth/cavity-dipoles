@@ -195,7 +195,7 @@ def run_field(args):
 # --- CLI ----------------------------------------------------------------------
 
 def add_common(sp):
-    sp.add_argument("config", nargs="?", default="out/config.txt")
+    sp.add_argument("config", nargs="?", default="res/config.txt")
     sp.add_argument("--n-spectral", type=int, default=256)
     sp.add_argument("--n-boundary", type=int, default=1200)
     sp.add_argument("--log-noise", type=float, default=-8.0)

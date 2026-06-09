@@ -26,7 +26,7 @@ NS_SWEEP = (16, 24, 32, 48, 64, 80, 96, 112, 128, 144, 160, 192, 224,
 
 def main():
     ap = argparse.ArgumentParser(description="EPGP n_spectral convergence sweep")
-    ap.add_argument("config", nargs="?", default="out/config.txt")
+    ap.add_argument("config", nargs="?", default="res/config.txt")
     ap.add_argument("--n-boundary", type=int, default=1200)
     ap.add_argument("--log-noise", type=float, default=-8.0)
     ap.add_argument("--opt-noise", action=argparse.BooleanOptionalAction, default=True)
