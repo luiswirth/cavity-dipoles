@@ -11,6 +11,15 @@ dependencies = [
     "maxwellgp",
 ]
 
+[project.scripts]
+gen-config = "cavity_dipoles.gen_config:main"
+epgp-operator = "cavity_dipoles.epgp.operators:main"
+epgp-sweep = "cavity_dipoles.epgp.sweep:main"
+epgp-resonance = "cavity_dipoles.epgp.resonance:main"
+epgp-convergence = "cavity_dipoles.epgp.convergence:main"
+aggregate = "cavity_dipoles.results.aggregate:main"
+make-figures = "cavity_dipoles.make_figures:main"
+
 [build-system]
 requires = ["uv_build>=0.11.17,<0.12.0"]
 build-backend = "uv_build"

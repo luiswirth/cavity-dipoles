@@ -106,8 +106,8 @@ def fit(cfg, semiaxes, k, Y, n_spectral):
 def assemble_operator(cfg, semiaxes, k, points, e1, e2, n_spectral):
     """Assemble the dipole reaction operator T for one (k, n_spectral).
 
-    Returns (T, posterior); the posterior carries the conditioned factor used
-    for diagnostics such as the system condition number.
+    Returns (T, posterior, model); the posterior carries the conditioned factor
+    used for the system condition number, the model the tuned noise level.
     """
     configs = []
     for i in range(len(points)):
@@ -127,7 +127,7 @@ def assemble_operator(cfg, semiaxes, k, points, e1, e2, n_spectral):
     field = np.asarray(post.mean(model.kernel.feature_map(X_query))).reshape(n_cfg, 3, n_cfg)
     Q = np.stack([q for _, _, q in configs])
     T = np.einsum("ic,icj->ij", Q, field)
-    return T, post
+    return T, post, model
 
 
 # --- subcommand: reaction operator --------------------------------------------
@@ -135,7 +135,7 @@ def assemble_operator(cfg, semiaxes, k, points, e1, e2, n_spectral):
 def run_operator(args):
     k, semiaxes, points, e1, e2 = load_config(args.config)
     cfg = GPConfig.from_args(args)
-    T, post = assemble_operator(cfg, semiaxes, k, points, e1, e2, args.n_spectral)
+    T, post, _ = assemble_operator(cfg, semiaxes, k, points, e1, e2, args.n_spectral)
 
     cond_A = float(np.linalg.cond(np.asarray(post.L @ post.L.conj().T)))
     asym = np.linalg.norm(T - T.T) / np.linalg.norm(T)

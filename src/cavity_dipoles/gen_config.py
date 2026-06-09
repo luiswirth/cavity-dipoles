@@ -10,6 +10,11 @@ OUT = "out/config.txt"
 
 
 def fibonacci_sphere(n):
+    # Defines the benchmark Lambda points: written to the config and consumed by
+    # both solvers (the C++ BEM reads them from the config, never regenerating).
+    # Kept independent of maxwellgp.utils.fibonacci_sphere, which is the EPGP's
+    # private boundary-collocation spiral; the two roles must not be conflated,
+    # since changing this spiral would redefine the benchmark.
     i = np.arange(n) + 0.5
     phi = np.arccos(1.0 - 2.0 * i / n)
     theta = np.pi * (1.0 + 5.0**0.5) * i
@@ -28,7 +33,7 @@ def tangent_frame(n):
     return e1, e2
 
 
-def main(k, semiaxes, n, out):
+def write_config(k, semiaxes, n, out):
     points = fibonacci_sphere(n)
     rows = []
     for x in points:
@@ -50,7 +55,7 @@ def main(k, semiaxes, n, out):
     print(f"wrote {out}: {n} points")
 
 
-if __name__ == "__main__":
+def main():
     p = argparse.ArgumentParser(description="generate shared cavity config")
     p.add_argument("-n", "--num", type=int, default=N, help="dipole points on Lambda")
     p.add_argument("-k", type=float, default=K, help="wavenumber")
@@ -59,4 +64,8 @@ if __name__ == "__main__":
     )
     p.add_argument("-o", "--out", default=OUT, help="output config path")
     args = p.parse_args()
-    main(args.k, tuple(args.semiaxes), args.num, args.out)
+    write_config(args.k, tuple(args.semiaxes), args.num, args.out)
+
+
+if __name__ == "__main__":
+    main()

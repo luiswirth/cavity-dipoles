@@ -43,7 +43,7 @@ def main():
     for k in K_SWEEP:
         Ts, conds = {}, {}
         for ns in NS_SWEEP:
-            T, post = assemble_operator(cfg, semiaxes, k, points, e1, e2, ns)
+            T, post, _ = assemble_operator(cfg, semiaxes, k, points, e1, e2, ns)
             Ts[ns] = T
             conds[ns] = float(np.linalg.cond(np.asarray(post.L @ post.L.conj().T)))
             recip = np.linalg.norm(T - T.T) / np.linalg.norm(T)
