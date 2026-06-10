@@ -56,8 +56,9 @@ def fig_epgp_convergence(fmt="svg"):
     save(fig, "epgp_reciprocity", fmt)
 
 
-def fig_ksweep(fmt="svg"):
-    path = os.path.join(EPGP, "ksweep.csv")
+def _ksweep_fig(path, yfield, ylabel, savename, fmt):
+    """Wavenumber sweep: yfield vs n_spec, one curve per k, with the band-limit
+    prediction n_spec = (kR)^2 marked per curve."""
     if not os.path.exists(path):
         return
     from matplotlib.lines import Line2D
@@ -72,17 +73,15 @@ def fig_ksweep(fmt="svg"):
         sel = sorted((r for r in rows if float(r["k"]) == k),
                      key=lambda r: int(r["n_spectral"]))
         ns = np.array([int(r["n_spectral"]) for r in sel])
-        rec = np.array([max(float(r["recip"]), FLOOR) for r in sel])
+        y = np.array([max(float(r[yfield]), FLOOR) for r in sel])
         color = cmap(i / max(len(ks) - 1, 1))
-        ax.plot(ns, rec, "D-", color=color, mec="white", mew=0.8,
-                markersize=6, label=f"$k={k:g}$")
-        # band-limit prediction: drop at sqrt(n_spec) = k R, i.e. n_spec = (k R)^2
+        ax.plot(ns, y, "D-", color=color, mec="white", mew=0.8, markersize=6)
         ax.axvline((k * R) ** 2, color=color, ls=":", lw=1.6)
 
     ax.set_xscale("log", base=2)
     ax.set_yscale("log")
     ax.set_xlabel(r"$n_\mathrm{spec}$")
-    ax.set_ylabel(r"$\rho = \|\mathbf{T}-\mathbf{T}^{\!\top}\|/\|\mathbf{T}\|$")
+    ax.set_ylabel(ylabel)
 
     handles = [Line2D([0], [0], color=cmap(i / max(len(ks) - 1, 1)),
                       marker="D", mec="white", mew=0.8, markersize=6)
@@ -92,7 +91,19 @@ def fig_ksweep(fmt="svg"):
     labels.append(r"$n_\mathrm{spec}=(kR)^2$")
     ax.legend(handles, labels, frameon=False, ncol=2)
     _grid(ax)
-    save(fig, "epgp_ksweep", fmt)
+    save(fig, savename, fmt)
+
+
+def fig_ksweep(fmt="svg"):
+    _ksweep_fig(os.path.join(EPGP, "ksweep.csv"), "recip",
+                r"$\rho = \|\mathbf{T}-\mathbf{T}^{\!\top}\|/\|\mathbf{T}\|$",
+                "epgp_ksweep", fmt)
+
+
+def fig_sphere_ksweep(fmt="svg"):
+    _ksweep_fig(os.path.join(SPHERE, "ksweep.csv"), "err_vs_ref",
+                r"$\|\mathbf{T}_{\mathrm{EPGP}}-\mathbf{T}_\star\|/\|\mathbf{T}_\star\|$",
+                "sphere_ksweep", fmt)
 
 
 def fig_bem_reciprocity(bem, fmt="svg"):
@@ -197,6 +208,7 @@ def main():
     fig_bem_reciprocity(bem, fmt)
     fig_sphere_convergence(fmt)
     fig_sphere_multipole(fmt)
+    fig_sphere_ksweep(fmt)
     stale = ("h_convergence", "p_convergence", "reciprocity", "svd_spectrum",
              "bem_validity", "bem_self_convergence", "preview", "all_preview",
              "epgp_convergence", "operator_spectrum")
