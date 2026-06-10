@@ -9,6 +9,7 @@ from .common import FIGS, save, setup_style
 
 BEM = os.path.join("out", "bem")
 EPGP = os.path.join("out", "epgp")
+SPHERE = os.path.join("out", "sphere")
 FLOOR = 1e-16
 
 C = {"epgp": "#1f77b4", "recip": "#d62728"}
@@ -131,6 +132,54 @@ def fig_bem_reciprocity(bem, fmt="svg"):
     save(fig, "bem_reciprocity", fmt)
 
 
+def fig_sphere_convergence(fmt="svg"):
+    path = os.path.join(SPHERE, "results.csv")
+    if not os.path.exists(path):
+        return
+    e = sorted(read_csv(path), key=lambda r: int(r["n_spectral"]))
+    ns = np.array([int(r["n_spectral"]) for r in e])
+    err = np.array([max(float(r["err_vs_analytic"]), FLOOR) for r in e])
+    rec = np.array([max(float(r["recip"]), FLOOR) for r in e])
+    mp = os.path.join(SPHERE, "multipole.csv")
+    kR = float(read_csv(mp)[0]["kR"]) if os.path.exists(mp) else None
+
+    fig, ax = plt.subplots(figsize=(6.4, 4.6), layout="constrained")
+    ax.plot(ns, err, "D-", color=C["recip"], mec="white", mew=1.0, markersize=8,
+            label=r"$\|\mathbf{T}_{\mathrm{EPGP}}-\mathbf{T}_\star\|/\|\mathbf{T}_\star\|$")
+    ax.plot(ns, rec, "o-", color=C["epgp"], mec="white", mew=1.0, markersize=7,
+            label=r"$\rho = \|\mathbf{T}-\mathbf{T}^{\!\top}\|/\|\mathbf{T}\|$")
+    if kR is not None:
+        ax.axvline(kR**2, color="0.4", ls=":", lw=1.6, label=r"$n_\mathrm{spec}=(kR)^2$")
+    ax.set_xscale("log", base=2)
+    ax.set_yscale("log")
+    ax.set_xlabel(r"$n_\mathrm{spec}$")
+    ax.set_ylabel("relative error")
+    ax.set_title("EPGP convergence to analytic sphere operator")
+    ax.legend(frameon=False)
+    _grid(ax)
+    save(fig, "sphere_convergence", fmt)
+
+
+def fig_sphere_multipole(fmt="svg"):
+    path = os.path.join(SPHERE, "multipole.csv")
+    if not os.path.exists(path):
+        return
+    r = read_csv(path)
+    ll = np.array([int(x["l"]) for x in r])
+    nrm = np.array([max(float(x["norm"]), FLOOR) for x in r])
+    kR = float(r[0]["kR"])
+
+    fig, ax = plt.subplots(figsize=(6.4, 4.6), layout="constrained")
+    ax.semilogy(ll, nrm, "D-", color=C["epgp"], mec="white", mew=1.0, markersize=7)
+    ax.axvline(kR, color="0.4", ls=":", lw=1.6, label=r"$l = kR$")
+    ax.set_xlabel(r"degree $l$")
+    ax.set_ylabel(r"$\|\mathbf{T}_l\|$")
+    ax.set_title("Multipole spectrum of the sphere reaction operator")
+    ax.legend(frameon=False)
+    _grid(ax)
+    save(fig, "sphere_multipole", fmt)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--format", choices=["svg", "png"], default="svg")
@@ -146,6 +195,8 @@ def main():
     fig_epgp_convergence(fmt)
     fig_ksweep(fmt)
     fig_bem_reciprocity(bem, fmt)
+    fig_sphere_convergence(fmt)
+    fig_sphere_multipole(fmt)
     stale = ("h_convergence", "p_convergence", "reciprocity", "svd_spectrum",
              "bem_validity", "bem_self_convergence", "preview", "all_preview",
              "epgp_convergence", "operator_spectrum")
