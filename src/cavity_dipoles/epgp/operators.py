@@ -195,7 +195,7 @@ def run_field(args):
 # --- CLI ----------------------------------------------------------------------
 
 def add_common(sp):
-    sp.add_argument("config", nargs="?", default="res/config.txt")
+    sp.add_argument("config", nargs="?", default="res/config_ellipse.txt")
     sp.add_argument("--n-spectral", type=int, default=256)
     sp.add_argument("--n-boundary", type=int, default=1200)
     sp.add_argument("--log-noise", type=float, default=-8.0)
@@ -209,7 +209,7 @@ def main():
 
     op = sub.add_parser("operator", help="assemble the dipole reaction operator T")
     add_common(op)
-    op.add_argument("--out", default="out/epgp/T_epgp.npy")
+    op.add_argument("--out", default="out/ellipse/T_epgp.npy")
     op.set_defaults(func=run_operator)
 
     fld = sub.add_parser("field", help="evaluate the field on a slice for one dipole")

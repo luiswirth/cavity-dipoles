@@ -8,7 +8,7 @@ import numpy as np
 from .common import FIGS, save, setup_style
 
 BEM = os.path.join("out", "bem")
-EPGP = os.path.join("out", "epgp")
+EPGP = os.path.join("out", "ellipse")
 SPHERE = os.path.join("out", "sphere")
 FLOOR = 1e-16
 

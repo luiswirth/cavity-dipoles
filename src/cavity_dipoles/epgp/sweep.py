@@ -1,11 +1,15 @@
 """Wavenumber sweep for the angular-bandwidth hypothesis.
 
-For each wavenumber k and each spectral resolution n_spectral, assemble the
-EPGP reaction operator T and record its reciprocity error rho = ||T-T^T||/||T||
-(intrinsic to EPGP, no BEM reference needed), its self-convergence against the
-finest n_spectral at the same k, and the condition number cond(A) of the
-conditioned system. The band-limit hypothesis predicts the staircase drop at
-sqrt(n_spectral) ~ k R, that is n_spectral ~ (k R)^2.
+For each wavenumber k and each spectral resolution n_spectral, assemble the EPGP
+reaction operator and record the reciprocity error rho (reference-free), the
+self-convergence to the finest n_spectral, and the condition number. For the
+sphere benchmark the exact reference is available at every k, so the relative
+error against the analytic operator is recorded too. The band-limit hypothesis
+predicts the staircase drop at sqrt(n_spectral) ~ k R, that is n_spectral ~ (k R)^2.
+
+This is an EPGP-only diagnostic (the BEM reference exists only at the benchmark
+k), so generation and analysis are not separated here as they are for the main
+convergence study.
 """
 
 import argparse
@@ -15,11 +19,11 @@ import os
 import jax
 import numpy as np
 
+from ..benchmark import GEOMETRIES, config_path, out_dir, reference_operator
 from .operators import GPConfig, assemble_operator, load_config
 
 jax.config.update("jax_enable_x64", True)
 
-# k sweep: R = 6 (largest semi-axis), so k R ranges 6 .. 18.
 K_SWEEP = (1.0, 1.5, 2.0, 2.5, 3.0)
 NS_SWEEP = (16, 24, 32, 48, 64, 80, 96, 112, 128, 144, 160, 192, 224,
             256, 320, 384, 512, 768)
@@ -27,50 +31,50 @@ NS_SWEEP = (16, 24, 32, 48, 64, 80, 96, 112, 128, 144, 160, 192, 224,
 
 def main():
     ap = argparse.ArgumentParser(description="EPGP wavenumber sweep")
-    ap.add_argument("config", nargs="?", default="res/config.txt")
+    ap.add_argument("--geometry", choices=list(GEOMETRIES), default="ellipse")
+    ap.add_argument("--config", default=None)
     ap.add_argument("--n-boundary", type=int, default=1200)
     ap.add_argument("--log-noise", type=float, default=-8.0)
     ap.add_argument("--opt-noise", action=argparse.BooleanOptionalAction, default=True)
     ap.add_argument("--opt-steps", type=int, default=200)
-    ap.add_argument("--out", default="out/epgp/ksweep.csv")
+    ap.add_argument("--out", default=None)
     args = ap.parse_args()
 
-    _k_cfg, semiaxes, points, e1, e2 = load_config(args.config)
+    config = args.config or config_path(args.geometry)
+    _k, semiaxes, points, e1, e2 = load_config(config)
     cfg = GPConfig.from_args(args)
     R = float(np.max(semiaxes))
+    out = args.out or os.path.join(out_dir(args.geometry), "ksweep.csv")
 
     rows = []
     for k in K_SWEEP:
-        Ts, conds = {}, {}
+        Tref = reference_operator(args.geometry, k, points, e1, e2) \
+            if args.geometry == "sphere" else None
+        nref = np.linalg.norm(Tref) if Tref is not None else None
+        Ts = {}
         for ns in NS_SWEEP:
             T, post, _ = assemble_operator(cfg, semiaxes, k, points, e1, e2, ns)
             Ts[ns] = T
-            conds[ns] = float(np.linalg.cond(np.asarray(post.L @ post.L.conj().T)))
             recip = np.linalg.norm(T - T.T) / np.linalg.norm(T)
-            print(f"k={k:>4}  n_spec={ns:>4}  recip={recip:.3e}  "
-                  f"cond(A)={conds[ns]:.3e}  drop at n=(kR)^2={int((k * R) ** 2)}")
-        Tref = Ts[NS_SWEEP[-1]]
-        nref = np.linalg.norm(Tref)
-        for ns in NS_SWEEP:
-            T = Ts[ns]
-            rows.append({
-                "k": k,
-                "R": R,
-                "n_spectral": ns,
-                "recip": np.linalg.norm(T - T.T) / np.linalg.norm(T),
-                "selfconv": np.linalg.norm(T - Tref) / nref,
-                "condA": conds[ns],
-            })
+            cond = float(np.linalg.cond(np.asarray(post.L @ post.L.conj().T)))
+            err = np.linalg.norm(T - Tref) / nref if Tref is not None else float("nan")
+            rows.append({"k": k, "R": R, "n_spectral": ns, "recip": float(recip),
+                         "cond": cond, "err_vs_ref": float(err), "selfconv": None})
+            print(f"{args.geometry} k={k:>4} n_spec={ns:>4} recip={recip:.3e} "
+                  f"cond={cond:.2e} err_vs_ref={err:.3e}")
+        Tfin = Ts[NS_SWEEP[-1]]
+        nfin = np.linalg.norm(Tfin)
+        for r in rows[-len(NS_SWEEP):]:
+            r["selfconv"] = float(np.linalg.norm(Ts[r["n_spectral"]] - Tfin) / nfin)
 
-    os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True)
-    with open(args.out, "w", newline="") as f:
+    os.makedirs(os.path.dirname(out) or ".", exist_ok=True)
+    with open(out, "w", newline="") as f:
         w = csv.writer(f)
-        w.writerow(["k", "R", "n_spectral", "recip", "selfconv", "condA"])
+        w.writerow(["k", "R", "n_spectral", "recip", "selfconv", "cond", "err_vs_ref"])
         for r in rows:
-            w.writerow([r["k"], r["R"], r["n_spectral"],
-                        f"{r['recip']:.6e}", f"{r['selfconv']:.6e}",
-                        f"{r['condA']:.6e}"])
-    print(f"wrote {args.out}: {len(rows)} rows")
+            w.writerow([r["k"], r["R"], r["n_spectral"], f"{r['recip']:.6e}",
+                        f"{r['selfconv']:.6e}", f"{r['cond']:.6e}", f"{r['err_vs_ref']:.6e}"])
+    print(f"wrote {out}: {len(rows)} rows")
 
 
 if __name__ == "__main__":

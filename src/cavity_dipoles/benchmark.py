@@ -13,6 +13,8 @@ operators and a raw manifest for a given geometry, and results.aggregate then
 compares them to the reference returned here.
 """
 
+import os
+
 from .results.compare import load_bem
 from .sphere import reaction_operator_sphere
 
@@ -21,6 +23,14 @@ GEOMETRIES = {"ellipse": (4.0, 4.0, 6.0), "sphere": (4.0, 4.0, 4.0)}
 
 def semiaxes(name):
     return GEOMETRIES[name]
+
+
+def config_path(name):
+    return os.path.join("res", f"config_{name}.txt")
+
+
+def out_dir(name):
+    return os.path.join("out", name)
 
 
 def reference_operator(name, k, points, e1, e2, bem_path="out/bem/T_bem_p4_m4.dat"):

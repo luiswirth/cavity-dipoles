@@ -16,6 +16,7 @@ import time
 import jax
 import numpy as np
 
+from ..benchmark import GEOMETRIES, config_path, out_dir
 from .operators import GPConfig, assemble_operator, load_config
 
 jax.config.update("jax_enable_x64", True)
@@ -26,17 +27,20 @@ NS_SWEEP = (16, 24, 32, 48, 64, 80, 96, 112, 128, 144, 160, 192, 224,
 
 def main():
     ap = argparse.ArgumentParser(description="EPGP n_spectral convergence sweep")
-    ap.add_argument("config", nargs="?", default="res/config.txt")
+    ap.add_argument("--geometry", choices=list(GEOMETRIES), default="ellipse")
+    ap.add_argument("--config", default=None)
     ap.add_argument("--n-boundary", type=int, default=1200)
     ap.add_argument("--log-noise", type=float, default=-8.0)
     ap.add_argument("--opt-noise", action=argparse.BooleanOptionalAction, default=True)
     ap.add_argument("--opt-steps", type=int, default=200)
-    ap.add_argument("--outdir", default="out/epgp")
+    ap.add_argument("--outdir", default=None)
     args = ap.parse_args()
 
-    k, semiaxes, points, e1, e2 = load_config(args.config)
+    config = args.config or config_path(args.geometry)
+    outdir = args.outdir or out_dir(args.geometry)
+    k, semiaxes, points, e1, e2 = load_config(config)
     cfg = GPConfig.from_args(args)
-    os.makedirs(args.outdir, exist_ok=True)
+    os.makedirs(outdir, exist_ok=True)
 
     rows = []
     for ns in NS_SWEEP:
@@ -49,7 +53,7 @@ def main():
         norm = float(np.linalg.norm(T))
         log_noise = float(model.log_noise)
 
-        np.save(os.path.join(args.outdir, f"T_epgp_ns{ns}.npy"), T)
+        np.save(os.path.join(outdir, f"T_epgp_ns{ns}.npy"), T)
         rows.append({
             "n_spectral": ns,
             "dofs": 2 * ns,
@@ -63,7 +67,7 @@ def main():
         print(f"ns={ns:>5}  dofs={2 * ns:>5}  secs={secs:6.1f}  "
               f"log_noise={log_noise:7.3f}  cond={cond:.3e}  recip={recip:.3e}")
 
-    manifest = os.path.join(args.outdir, "manifest.csv")
+    manifest = os.path.join(outdir, "manifest.csv")
     with open(manifest, "w", newline="") as f:
         w = csv.writer(f)
         w.writerow(["n_spectral", "dofs", "n_boundary", "secs",

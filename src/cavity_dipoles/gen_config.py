@@ -3,10 +3,9 @@ import os
 
 import numpy as np
 
-K = 2.0
-SEMIAXES = (4.0, 4.0, 6.0)
+from .benchmark import GEOMETRIES, config_path
+
 N = 32
-OUT = "res/config.txt"
 
 
 def fibonacci_sphere(n):
@@ -56,15 +55,16 @@ def write_config(k, semiaxes, n, out):
 
 
 def main():
-    p = argparse.ArgumentParser(description="generate shared cavity config")
+    p = argparse.ArgumentParser(description="generate a benchmark cavity config")
+    p.add_argument("--geometry", choices=list(GEOMETRIES), default="ellipse")
     p.add_argument("-n", "--num", type=int, default=N, help="dipole points on Lambda")
-    p.add_argument("-k", type=float, default=K, help="wavenumber")
-    p.add_argument(
-        "--semiaxes", type=float, nargs=3, default=list(SEMIAXES), metavar=("A", "B", "C")
-    )
-    p.add_argument("-o", "--out", default=OUT, help="output config path")
+    p.add_argument("-k", type=float, default=2.0, help="wavenumber")
+    p.add_argument("--semiaxes", type=float, nargs=3, default=None, metavar=("A", "B", "C"))
+    p.add_argument("-o", "--out", default=None, help="output config path")
     args = p.parse_args()
-    write_config(args.k, tuple(args.semiaxes), args.num, args.out)
+    semiaxes = tuple(args.semiaxes) if args.semiaxes else GEOMETRIES[args.geometry]
+    out = args.out or config_path(args.geometry)
+    write_config(args.k, semiaxes, args.num, out)
 
 
 if __name__ == "__main__":

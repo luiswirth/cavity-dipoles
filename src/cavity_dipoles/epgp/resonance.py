@@ -24,6 +24,7 @@ import numpy as np
 from maxwellgp.kernel import MaxwellFeatureMap
 from maxwellgp.utils import fibonacci_sphere
 
+from ..benchmark import GEOMETRIES, config_path, out_dir
 from .operators import boundary_collocation, load_config
 
 jax.config.update("jax_enable_x64", True)
@@ -57,7 +58,8 @@ def local_minima(ks, s):
 
 def main():
     ap = argparse.ArgumentParser(description="PEC cavity resonance locator")
-    ap.add_argument("config", nargs="?", default="res/config.txt")
+    ap.add_argument("--geometry", choices=list(GEOMETRIES), default="ellipse")
+    ap.add_argument("--config", default=None)
     ap.add_argument("--kmin", type=float, default=0.3)
     ap.add_argument("--kmax", type=float, default=3.2)
     ap.add_argument("--dk", type=float, default=0.01)
@@ -68,13 +70,17 @@ def main():
     ap.add_argument("--oversample", type=float, default=3.5)
     ap.add_argument("--nmin", type=int, default=40)
     ap.add_argument("--nmax", type=int, default=600)
-    ap.add_argument("--out", default="out/epgp/resonances.csv")
-    ap.add_argument("--peaks", default="out/epgp/eigenvalues.csv")
+    ap.add_argument("--out", default=None)
+    ap.add_argument("--peaks", default=None)
     ap.add_argument("--thresh", type=float, default=0.03,
                     help="report local minima with sigma_min below this")
     args = ap.parse_args()
 
-    _k, semiaxes, *_ = load_config(args.config)
+    config = args.config or config_path(args.geometry)
+    od = out_dir(args.geometry)
+    out = args.out or os.path.join(od, "resonances.csv")
+    peaks = args.peaks or os.path.join(od, "eigenvalues.csv")
+    _k, semiaxes, *_ = load_config(config)
     R = float(np.max(semiaxes))
 
     ks = np.arange(args.kmin, args.kmax + 0.5 * args.dk, args.dk)
@@ -86,21 +92,21 @@ def main():
         s[i] = sigma_min(k, n_spec, semiaxes, n_b, n_i)
         print(f"k={k:6.3f}  n_spec={n_spec:>4}  sigma_min={s[i]:.4e}")
 
-    os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True)
-    with open(args.out, "w", newline="") as f:
+    os.makedirs(os.path.dirname(out) or ".", exist_ok=True)
+    with open(out, "w", newline="") as f:
         w = csv.writer(f)
         w.writerow(["k", "sigma_min"])
         for k, sk in zip(ks, s):
             w.writerow([f"{k:.4f}", f"{sk:.6e}"])
-    print(f"wrote {args.out}: {len(ks)} points")
+    print(f"wrote {out}: {len(ks)} points")
 
     mins = [(k, v) for k, v in local_minima(ks, s) if v < args.thresh]
-    with open(args.peaks, "w", newline="") as f:
+    with open(peaks, "w", newline="") as f:
         w = csv.writer(f)
         w.writerow(["k_eig", "sigma_min"])
         for k, v in mins:
             w.writerow([f"{k:.4f}", f"{v:.6e}"])
-    print(f"wrote {args.peaks}: {len(mins)} eigenvalue estimates")
+    print(f"wrote {peaks}: {len(mins)} eigenvalue estimates")
     for k, v in mins:
         print(f"  resonance near k={k:.3f}  (sigma_min={v:.2e})")
 

@@ -12,6 +12,7 @@ import os
 
 import numpy as np
 
+from ..benchmark import config_path, out_dir, reference_operator
 from ..epgp.operators import load_config
 from .compare import load_bem, load_epgp, reciprocity
 
@@ -118,25 +119,27 @@ def aggregate_multipole(k, points, e1, e2, outdir):
 def main():
     ap = argparse.ArgumentParser(description="aggregate convergence results")
     ap.add_argument("--geometry", choices=["ellipse", "sphere"], default="ellipse")
-    ap.add_argument("--config", default="res/config.txt")
+    ap.add_argument("--config", default=None)
     args = ap.parse_args()
 
+    od = out_dir(args.geometry)
+    config = args.config or config_path(args.geometry)
+    k, _semi, points, e1, e2 = load_config(config)
+
     if args.geometry == "ellipse":
-        T_ref = aggregate_bem()
-        if os.path.exists(os.path.join("out", "epgp", "manifest.csv")):
-            aggregate_epgp(os.path.join("out", "epgp"), T_ref, "err_vs_bem_ref")
-        else:
-            print("(no EP-GP manifest in out/epgp/; run epgp-convergence)")
+        T_ref = aggregate_bem()                  # BEM table + p4m4 reference
+        err_col = "err_vs_bem_ref"
     else:
-        from ..benchmark import reference_operator
-        k, _semi, points, e1, e2 = load_config(args.config)
-        outdir = os.path.join("out", "sphere")
-        T_ref = reference_operator("sphere", k, points, e1, e2)
-        if os.path.exists(os.path.join(outdir, "manifest.csv")):
-            aggregate_epgp(outdir, T_ref, "err_vs_analytic")
-        else:
-            print(f"(no EP-GP manifest in {outdir}/; run epgp-convergence)")
-        aggregate_multipole(k, points, e1, e2, outdir)
+        T_ref = reference_operator(args.geometry, k, points, e1, e2)
+        err_col = "err_vs_analytic"
+
+    if os.path.exists(os.path.join(od, "manifest.csv")):
+        aggregate_epgp(od, T_ref, err_col)
+    else:
+        print(f"(no EP-GP manifest in {od}/; run epgp-convergence)")
+
+    if args.geometry == "sphere":
+        aggregate_multipole(k, points, e1, e2, od)
 
 
 if __name__ == "__main__":
