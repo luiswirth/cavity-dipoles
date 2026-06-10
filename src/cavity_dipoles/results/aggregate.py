@@ -1,15 +1,24 @@
+"""Analysis step: turn raw generated operators into convergence tables.
+
+Mirrors the generation/analysis split forced by the BEM side. The EPGP operators
+and their raw manifest are produced separately (epgp.convergence); here we add the
+self-convergence to the finest run and the error against the benchmark reference
+(BEM for the ellipse, the exact analytic operator for the sphere).
+"""
+
+import argparse
 import csv
 import os
 
 import numpy as np
 
+from ..epgp.operators import load_config
 from .compare import load_bem, load_epgp, reciprocity
 
 BEM = os.path.join("out", "bem")
-EPGP = os.path.join("out", "epgp")
 
 
-def read_manifest():
+def read_bem_manifest():
     info = {}
     with open(os.path.join(BEM, "manifest.csv")) as f:
         for row in csv.reader(f):
@@ -21,7 +30,7 @@ def read_manifest():
 
 
 def aggregate_bem():
-    info = read_manifest()
+    info = read_bem_manifest()
     runs = []
     for (p, m), meta in info.items():
         path = os.path.join(BEM, f"T_bem_p{p}_m{m}.dat")
@@ -44,12 +53,12 @@ def aggregate_bem():
                         f"{r['selfconv']:.6e}", r["secs"]])
     print(f"BEM reference (lowest recip): p{ref['p']} m{ref['m']}, "
           f"dofs={ref['dofs']}, recip={ref['recip']:.2e}")
-    return ref["T"], (ref["p"], ref["m"], ref["dofs"])
+    return ref["T"]
 
 
-def read_epgp_manifest():
+def read_epgp_manifest(epgp_dir):
     rows = []
-    with open(os.path.join(EPGP, "manifest.csv")) as f:
+    with open(os.path.join(epgp_dir, "manifest.csv")) as f:
         for row in csv.DictReader(f):
             rows.append({
                 "ns": int(row["n_spectral"]),
@@ -61,13 +70,12 @@ def read_epgp_manifest():
     return sorted(rows, key=lambda r: r["ns"])
 
 
-def aggregate_epgp(T_bem_ref):
-    """Combine the EPGP run manifest with the saved operators: add the
-    self-convergence (vs the finest n_spectral) and the cross-validation error
-    against the BEM reference, then write the rich convergence table."""
-    nref_bem = np.linalg.norm(T_bem_ref)
-    runs = read_epgp_manifest()
-    Ts = {r["ns"]: load_epgp(os.path.join(EPGP, f"T_epgp_ns{r['ns']}.npy")) for r in runs}
+def aggregate_epgp(epgp_dir, T_ref, err_col):
+    """Combine the EPGP manifest with the saved operators: add self-convergence
+    (vs the finest n_spectral) and the relative error against the reference."""
+    nref = np.linalg.norm(T_ref)
+    runs = read_epgp_manifest(epgp_dir)
+    Ts = {r["ns"]: load_epgp(os.path.join(epgp_dir, f"T_epgp_ns{r['ns']}.npy")) for r in runs}
     Tfinest = Ts[runs[-1]["ns"]]
     nfinest = np.linalg.norm(Tfinest)
 
@@ -75,27 +83,60 @@ def aggregate_epgp(T_bem_ref):
         T = Ts[r["ns"]]
         r["recip"] = reciprocity(T)
         r["selfconv"] = np.linalg.norm(T - Tfinest) / nfinest
-        r["err"] = np.linalg.norm(T - T_bem_ref) / nref_bem
+        r["err"] = np.linalg.norm(T - T_ref) / nref
 
-    with open(os.path.join(EPGP, "results.csv"), "w", newline="") as f:
+    path = os.path.join(epgp_dir, "results.csv")
+    with open(path, "w", newline="") as f:
         w = csv.writer(f)
         w.writerow(["n_spectral", "dofs", "secs", "log_noise", "cond",
-                    "recip", "selfconv_vs_finest", "err_vs_bem_ref"])
+                    "recip", "selfconv_vs_finest", err_col])
         for r in runs:
             w.writerow([r["ns"], r["dofs"], f"{r['secs']:.3f}",
                         f"{r['log_noise']:.6f}", f"{r['cond']:.6e}",
                         f"{r['recip']:.6e}", f"{r['selfconv']:.6e}", f"{r['err']:.6e}"])
             print(f"  EP-GP ns={r['ns']:>5}  secs={r['secs']:6.1f}  cond={r['cond']:.2e}  "
-                  f"recip={r['recip']:.3e}  selfconv={r['selfconv']:.3e}  err_vs_BEM={r['err']:.3e}")
-    print(f"wrote {os.path.join(EPGP, 'results.csv')}")
+                  f"recip={r['recip']:.3e}  selfconv={r['selfconv']:.3e}  err={r['err']:.3e}")
+    print(f"wrote {path}")
+
+
+def aggregate_multipole(k, points, e1, e2, outdir):
+    """Exact per-degree multipole spectrum of the spherical reference operator."""
+    from ..benchmark import GEOMETRIES
+    from ..sphere import multipole_spectrum
+
+    R = float(max(GEOMETRIES["sphere"]))
+    ls, norms = multipole_spectrum(k, R, points, e1, e2)
+    path = os.path.join(outdir, "multipole.csv")
+    with open(path, "w", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(["l", "norm", "kR"])
+        for l, nrm in zip(ls, norms):
+            w.writerow([int(l), f"{nrm:.6e}", f"{k * R:.4f}"])
+    print(f"wrote {path}: degrees 1..{int(ls[-1])}, k R = {k * R:.3f}")
 
 
 def main():
-    T_bem_ref, _ = aggregate_bem()
-    if os.path.exists(os.path.join(EPGP, "manifest.csv")):
-        aggregate_epgp(T_bem_ref)
+    ap = argparse.ArgumentParser(description="aggregate convergence results")
+    ap.add_argument("--geometry", choices=["ellipse", "sphere"], default="ellipse")
+    ap.add_argument("--config", default="res/config.txt")
+    args = ap.parse_args()
+
+    if args.geometry == "ellipse":
+        T_ref = aggregate_bem()
+        if os.path.exists(os.path.join("out", "epgp", "manifest.csv")):
+            aggregate_epgp(os.path.join("out", "epgp"), T_ref, "err_vs_bem_ref")
+        else:
+            print("(no EP-GP manifest in out/epgp/; run epgp-convergence)")
     else:
-        print("(no EP-GP convergence manifest in out/epgp/; run epgp.convergence)")
+        from ..benchmark import reference_operator
+        k, _semi, points, e1, e2 = load_config(args.config)
+        outdir = os.path.join("out", "sphere")
+        T_ref = reference_operator("sphere", k, points, e1, e2)
+        if os.path.exists(os.path.join(outdir, "manifest.csv")):
+            aggregate_epgp(outdir, T_ref, "err_vs_analytic")
+        else:
+            print(f"(no EP-GP manifest in {outdir}/; run epgp-convergence)")
+        aggregate_multipole(k, points, e1, e2, outdir)
 
 
 if __name__ == "__main__":

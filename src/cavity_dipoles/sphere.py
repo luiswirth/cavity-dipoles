@@ -83,6 +83,68 @@ def _tangential(field, normal):
     return field - np.sum(field * normal, axis=-1, keepdims=True) * normal
 
 
+def _defaults(k, R, L_max, n_theta, n_phi):
+    if L_max is None:
+        L_max = int(np.ceil(k * R)) + 12
+    if n_theta is None:
+        n_theta = L_max + 4
+    if n_phi is None:
+        n_phi = 2 * L_max + 4
+    return L_max, n_theta, n_phi
+
+
+def _contract(y, e1, e2):
+    """Tangent-frame projection of the response field y (n_cfg, N, 3) into the
+    (2N, 2N) operator, interleaving the two polarizations per point."""
+    n_cfg = y.shape[0]
+    T = np.empty((n_cfg, n_cfg), dtype=complex)
+    T[0::2] = np.einsum("xc,sxc->xs", e1, y)
+    T[1::2] = np.einsum("xc,sxc->xs", e2, y)
+    return T
+
+
+def _degree_responses(k, R, points, e1, e2, a, L_max, n_theta, n_phi):
+    """Yield (l, y_l): the degree-l tangential scattered response on Lambda,
+    shape (2N, N, 3), in the same (point, polarization) source ordering.
+
+    The benchmark conditions on Pi_t E and measures q . E^s (dipole transmit,
+    dipole receive), so we work with the tangential projection throughout rather
+    than the rotated n x E trace.
+    """
+    points = np.asarray(points, dtype=float)
+    dirs = points / np.linalg.norm(points, axis=1, keepdims=True)
+    N = len(points)
+
+    configs = []
+    for i in range(N):
+        configs.append((dirs[i] * a, e1[i]))
+        configs.append((dirs[i] * a, e2[i]))
+
+    th, ph, W = _quadrature(n_theta, n_phi)
+    er, _, _ = _frames(th, ph)
+    wall = R * er
+    PtE = np.stack([_tangential(incident_field_batch(wall, z, k, p), er)
+                    for z, p in configs])  # (2N, nq, 3)
+
+    mth = np.arccos(np.clip(dirs[:, 2], -1.0, 1.0))
+    mph = np.arctan2(dirs[:, 1], dirs[:, 0])
+
+    for l in range(1, L_max + 1):
+        Psi_g, Phi_g = _vsh(l, th, ph)
+        Psi_m, Phi_m = _vsh(l, mth, mph)
+        p_lm = np.einsum("q,sqc,mqc->sm", W, PtE, np.conj(Psi_g))
+        q_lm = np.einsum("q,sqc,mqc->sm", W, PtE, np.conj(Phi_g))
+        # interior PEC reflection: Psi (TM, N-type) fixed by psi_l', Phi (TE,
+        # M-type) by j_l; the scattered tangential field on Lambda follows.
+        jR, ja = spherical_jn(l, k * R), spherical_jn(l, k * a)
+        psR, psa = _psi_prime(l, k * R), _psi_prime(l, k * a)
+        y_psi = -(R / a) * (psa / psR) * p_lm
+        y_phi = -(ja / jR) * q_lm
+        y_l = (np.einsum("sm,mxc->sxc", y_psi, Psi_m)
+               + np.einsum("sm,mxc->sxc", y_phi, Phi_m))
+        yield l, y_l
+
+
 def reaction_operator_sphere(k, R, points, e1, e2, a=1.0,
                              L_max=None, n_theta=None, n_phi=None):
     """Exact reaction operator T for a PEC sphere of radius R.
@@ -91,63 +153,27 @@ def reaction_operator_sphere(k, R, points, e1, e2, a=1.0,
     Returns the (2N, 2N) complex operator in the same (point, polarization)
     ordering as the EPGP and BEM assemblies.
     """
-    if L_max is None:
-        L_max = int(np.ceil(k * R)) + 12
-    if n_theta is None:
-        n_theta = L_max + 4
-    if n_phi is None:
-        n_phi = 2 * L_max + 4
-
-    points = np.asarray(points, dtype=float)
+    L_max, n_theta, n_phi = _defaults(k, R, L_max, n_theta, n_phi)
     e1, e2 = np.asarray(e1, dtype=float), np.asarray(e2, dtype=float)
-    dirs = points / np.linalg.norm(points, axis=1, keepdims=True)
     N = len(points)
+    y = np.zeros((2 * N, N, 3), dtype=complex)
+    for _, y_l in _degree_responses(k, R, points, e1, e2, a, L_max, n_theta, n_phi):
+        y += y_l
+    return _contract(y, e1, e2)
 
-    # source / measurement configurations: (point, polarization)
-    configs = []
-    for i in range(N):
-        configs.append((dirs[i] * a, e1[i]))
-        configs.append((dirs[i] * a, e2[i]))
-    n_cfg = len(configs)
 
-    # wall quadrature points (radius R) and the incident tangential projections
-    # there. The benchmark conditions on Pi_t E and measures q . E^s (dipole
-    # transmit, dipole receive), so we work with the tangential projection
-    # throughout rather than the rotated n x E trace.
-    th, ph, W = _quadrature(n_theta, n_phi)
-    er, _, _ = _frames(th, ph)
-    wall = R * er
+def multipole_spectrum(k, R, points, e1, e2, a=1.0,
+                       L_max=None, n_theta=None, n_phi=None):
+    """Per-degree contribution to the reaction operator.
 
-    PtE = np.stack([_tangential(incident_field_batch(wall, z, k, p), er)
-                    for z, p in configs])  # (n_cfg, nq, 3)
-
-    # measurement directions (radius a) -> angles
-    mth = np.arccos(np.clip(dirs[:, 2], -1.0, 1.0))
-    mph = np.arctan2(dirs[:, 1], dirs[:, 0])
-
-    y = np.zeros((n_cfg, N, 3), dtype=complex)  # scattered tangential trace on Lambda
-    for l in range(1, L_max + 1):
-        Psi_g, Phi_g = _vsh(l, th, ph)            # (2l+1, nq, 3)
-        Psi_m, Phi_m = _vsh(l, mth, mph)          # (2l+1, N, 3)
-
-        # project the incident tangential projection onto Psi, Phi
-        p_lm = np.einsum("q,sqc,mqc->sm", W, PtE, np.conj(Psi_g))
-        q_lm = np.einsum("q,sqc,mqc->sm", W, PtE, np.conj(Phi_g))
-
-        # interior PEC reflection: the Psi (TM, N-type) channel is fixed by the
-        # Riccati derivative psi_l', the Phi (TE, M-type) channel by j_l. The
-        # tangential scattered field on Lambda is then
-        jR, ja = spherical_jn(l, k * R), spherical_jn(l, k * a)
-        psR, psa = _psi_prime(l, k * R), _psi_prime(l, k * a)
-        y_psi = -(R / a) * (psa / psR) * p_lm
-        y_phi = -(ja / jR) * q_lm
-
-        y += np.einsum("sm,mxc->sxc", y_psi, Psi_m)
-        y += np.einsum("sm,mxc->sxc", y_phi, Phi_m)
-
-    # contract with the measurement tangent frames -> (2N, 2N), interleaving the
-    # two polarizations per point to match the (point, polarization) ordering
-    T = np.empty((n_cfg, n_cfg), dtype=complex)
-    T[0::2] = np.einsum("xc,sxc->xs", e1, y)
-    T[1::2] = np.einsum("xc,sxc->xs", e2, y)
-    return T
+    Returns (ls, norms) with norms[i] the Frobenius norm of the degree-l term of
+    T. The norms fall off super-exponentially past l ~ k R, the exact angular
+    band limit.
+    """
+    L_max, n_theta, n_phi = _defaults(k, R, L_max, n_theta, n_phi)
+    e1, e2 = np.asarray(e1, dtype=float), np.asarray(e2, dtype=float)
+    ls, norms = [], []
+    for l, y_l in _degree_responses(k, R, points, e1, e2, a, L_max, n_theta, n_phi):
+        ls.append(l)
+        norms.append(float(np.linalg.norm(_contract(y_l, e1, e2))))
+    return np.array(ls), np.array(norms)
