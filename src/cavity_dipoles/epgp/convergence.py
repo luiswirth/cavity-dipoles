@@ -10,8 +10,14 @@ the BEM reference are derived afterward by results.aggregate.
 
 import argparse
 import csv
+import datetime
+import importlib.metadata
+import json
 import os
 import resource
+import socket
+import subprocess
+import sys
 import time
 
 import jax
@@ -21,6 +27,43 @@ from ..benchmark import GEOMETRIES, config_path, out_dir
 from .operators import GPConfig, assemble_operator, load_config
 
 jax.config.update("jax_enable_x64", True)
+
+
+def _git_commit():
+    try:
+        return subprocess.check_output(
+            ["git", "rev-parse", "HEAD"],
+            cwd=os.path.dirname(__file__), stderr=subprocess.DEVNULL).decode().strip()
+    except Exception:
+        return "unknown"
+
+
+def _pkg_version(name):
+    try:
+        return importlib.metadata.version(name)
+    except Exception:
+        return "unknown"
+
+
+def write_provenance(outdir, cfg, k, geometry, ns_list):
+    """Record everything needed to reproduce the run alongside the data."""
+    prov = {
+        "timestamp": datetime.datetime.now().isoformat(timespec="seconds"),
+        "host": socket.gethostname(),
+        "geometry": geometry,
+        "k": k,
+        "n_boundary": cfg.n_boundary,
+        "log_noise0": cfg.log_noise,
+        "opt_noise": cfg.opt_noise,
+        "opt_steps": cfg.opt_steps,
+        "n_spectral": list(ns_list),
+        "cavity_dipoles_commit": _git_commit(),
+        "maxwellgp_version": _pkg_version("maxwellgp"),
+        "jax_version": _pkg_version("jax"),
+        "python": sys.version.split()[0],
+    }
+    with open(os.path.join(outdir, "provenance.json"), "w") as f:
+        json.dump(prov, f, indent=2)
 
 NS_SWEEP = (16, 24, 32, 48, 64, 80, 96, 112, 128, 144, 160, 192, 224,
             256, 320, 384, 512, 768, 1024)
@@ -86,6 +129,9 @@ def main():
                         f"{r['cond']:.6e}", f"{r['recip']:.6e}", f"{r['norm']:.6e}",
                         r["maxrss_kb"]])
     print(f"wrote {manifest}: {len(rows)} runs")
+
+    write_provenance(outdir, cfg, k, args.geometry, NS_SWEEP)
+    print(f"wrote {os.path.join(outdir, 'provenance.json')}")
 
 
 if __name__ == "__main__":
