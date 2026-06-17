@@ -24,21 +24,24 @@ BEM-matched fairness comparison stays on CPU (Bembel is CPU-only).
 
 ## Run
 
-Preferred: one `n_spectral` per array task (job-level parallelism across the
-sweep). EP-GP does not scale past ~8-16 cores, so this, not more cores per task,
-is what makes a sweep finish fast.
+Preferred: one task per sweep point (job-level parallelism). EP-GP does not
+scale past ~8-16 cores, so this, not more cores per task, is what makes a study
+finish fast. `array.sbatch` runs any `--index`/`--collect`-aware entry point;
+`submit.sh` chains the array + the collect step (afterok):
 
-    euler/submit.sh ellipse                 # array + auto collect (afterok)
-    euler/submit.sh sphere --exclusive      # extra args forwarded to the array
+    euler/submit.sh 0-18 epgp-convergence --geometry ellipse
+    euler/submit.sh 0-4  epgp-sweep       --geometry ellipse
+    euler/submit.sh 0-9  epgp-resonance   --geometry ellipse --nchunks 10
 
-Or manually:
+Add --exclusive for the big regeneration (clean timing/memory per task):
 
-    sbatch --array=0-18 euler/sweep.sbatch ellipse
-    uv run epgp-convergence --geometry ellipse --collect   # merge fragments
+    SBATCH_EXTRA="--exclusive" euler/submit.sh 0-18 epgp-convergence --geometry sphere
 
-Whole-sweep-in-one-job (simpler, slower):
+Or manually: `sbatch --array=0-18 euler/array.sbatch epgp-convergence --geometry
+ellipse`, then `uv run epgp-convergence --geometry ellipse --collect`.
 
-    sbatch --array=1-2 euler/run.sbatch     # 1=ellipse, 2=sphere
+Whole-sweep-in-one-job (simpler, slower): `sbatch --array=1-2 euler/run.sbatch`
+(1=ellipse, 2=sphere).
 
 Threads are pinned to the allocation via `srun --cpu-bind=cores` (else JAX
 oversubscribes the node's full core count). Add `--exclusive` for the big

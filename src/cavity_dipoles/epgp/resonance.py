@@ -56,6 +56,39 @@ def local_minima(ks, s):
     return out
 
 
+FRAGMENT_DIR = "resonances.d"
+
+
+def sigma_at(k, R, semiaxes, args):
+    n_spec = int(min(args.nmax, max(args.nmin, round(args.alpha * (k * R) ** 2))))
+    n_b = int(max(250, round(args.oversample * 2 * n_spec / 3)))
+    n_i = max(40, n_spec // 4)
+    s = sigma_min(k, n_spec, semiaxes, n_b, n_i)
+    print(f"k={k:6.3f}  n_spec={n_spec:>4}  sigma_min={s:.4e}", flush=True)
+    return s
+
+
+def write_curve(out, ks, s):
+    os.makedirs(os.path.dirname(out) or ".", exist_ok=True)
+    with open(out, "w", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(["k", "sigma_min"])
+        for k, sk in zip(ks, s):
+            w.writerow([f"{k:.4f}", f"{sk:.6e}"])
+
+
+def write_peaks(peaks, ks, s, thresh):
+    mins = [(k, v) for k, v in local_minima(ks, s) if v < thresh]
+    with open(peaks, "w", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(["k_eig", "sigma_min"])
+        for k, v in mins:
+            w.writerow([f"{k:.4f}", f"{v:.6e}"])
+    for k, v in mins:
+        print(f"  resonance near k={k:.3f}  (sigma_min={v:.2e})")
+    return mins
+
+
 def main():
     ap = argparse.ArgumentParser(description="PEC cavity resonance locator")
     ap.add_argument("--geometry", choices=list(GEOMETRIES), default="ellipse")
@@ -74,6 +107,11 @@ def main():
     ap.add_argument("--peaks", default=None)
     ap.add_argument("--thresh", type=float, default=0.03,
                     help="report local minima with sigma_min below this")
+    ap.add_argument("--index", type=int, default=None,
+                    help="this array task's id; computes a strided subset of k")
+    ap.add_argument("--nchunks", type=int, default=1,
+                    help="number of array tasks the k-grid is split across")
+    ap.add_argument("--collect", action="store_true")
     args = ap.parse_args()
 
     config = args.config or config_path(args.geometry)
@@ -82,33 +120,36 @@ def main():
     peaks = args.peaks or os.path.join(od, "eigenvalues.csv")
     _k, semiaxes, *_ = load_config(config)
     R = float(np.max(semiaxes))
-
     ks = np.arange(args.kmin, args.kmax + 0.5 * args.dk, args.dk)
-    s = np.empty(len(ks))
-    for i, k in enumerate(ks):
-        n_spec = int(min(args.nmax, max(args.nmin, round(args.alpha * (k * R) ** 2))))
-        n_b = int(max(250, round(args.oversample * 2 * n_spec / 3)))
-        n_i = max(40, n_spec // 4)
-        s[i] = sigma_min(k, n_spec, semiaxes, n_b, n_i)
-        print(f"k={k:6.3f}  n_spec={n_spec:>4}  sigma_min={s[i]:.4e}")
 
-    os.makedirs(os.path.dirname(out) or ".", exist_ok=True)
-    with open(out, "w", newline="") as f:
-        w = csv.writer(f)
-        w.writerow(["k", "sigma_min"])
-        for k, sk in zip(ks, s):
-            w.writerow([f"{k:.4f}", f"{sk:.6e}"])
-    print(f"wrote {out}: {len(ks)} points")
+    if args.collect:
+        d = os.path.join(od, FRAGMENT_DIR)
+        pairs = []
+        for name in sorted(os.listdir(d)):
+            if name.endswith(".csv"):
+                with open(os.path.join(d, name)) as f:
+                    pairs += [(float(r[0]), float(r[1])) for r in list(csv.reader(f))[1:]]
+        pairs.sort()
+        kk = [p[0] for p in pairs]
+        ss = [p[1] for p in pairs]
+        write_curve(out, kk, ss)
+        mins = write_peaks(peaks, kk, ss, args.thresh)
+        print(f"collected {len(pairs)} points -> {out}; {len(mins)} eigenvalues -> {peaks}")
+        return
 
-    mins = [(k, v) for k, v in local_minima(ks, s) if v < args.thresh]
-    with open(peaks, "w", newline="") as f:
-        w = csv.writer(f)
-        w.writerow(["k_eig", "sigma_min"])
-        for k, v in mins:
-            w.writerow([f"{k:.4f}", f"{v:.6e}"])
-    print(f"wrote {peaks}: {len(mins)} eigenvalue estimates")
-    for k, v in mins:
-        print(f"  resonance near k={k:.3f}  (sigma_min={v:.2e})")
+    if args.index is not None:
+        idx = np.arange(args.index, len(ks), args.nchunks)
+        sub_ks = ks[idx]
+        sub_s = [sigma_at(k, R, semiaxes, args) for k in sub_ks]
+        d = os.path.join(od, FRAGMENT_DIR)
+        os.makedirs(d, exist_ok=True)
+        write_curve(os.path.join(d, f"{args.index:03d}.csv"), sub_ks, sub_s)
+        return
+
+    s = np.array([sigma_at(k, R, semiaxes, args) for k in ks])
+    write_curve(out, ks, s)
+    mins = write_peaks(peaks, ks, s, args.thresh)
+    print(f"wrote {out}: {len(ks)} points; {len(mins)} eigenvalues -> {peaks}")
 
 
 if __name__ == "__main__":

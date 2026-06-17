@@ -1,18 +1,21 @@
 #!/bin/bash
-# Submit the EP-GP convergence sweep as a SLURM array, then collect the per-ns
-# fragments into manifest.csv once the array finishes (afterok dependency).
+# Submit any --index/--collect study as a SLURM array, then merge the per-task
+# fragments once it finishes (afterok dependency).
 #
-#   euler/submit.sh ellipse                 # default 16 cores/task
-#   euler/submit.sh sphere --exclusive      # extra args forwarded to the array
+#   euler/submit.sh 0-18 epgp-convergence --geometry ellipse
+#   euler/submit.sh 0-4  epgp-sweep       --geometry ellipse
+#   euler/submit.sh 0-9  epgp-resonance   --geometry ellipse --nchunks 10
 #
-# Aggregation (which needs the BEM reference too) stays a local post-step: pull
-# epgp_results/ back, arrange BEM+EP-GP under cavity-dipoles/out/, run aggregate.
+# Extra sbatch flags (exclusive, throttling, ...) via SBATCH_EXTRA:
+#   SBATCH_EXTRA="--exclusive" euler/submit.sh 0-18 epgp-convergence --geometry ellipse
+#
+# Aggregation (which also needs the BEM reference) stays a local post-step.
 set -euo pipefail
-GEOM=${1:-ellipse}; shift || true
-jid=$(sbatch --parsable --array=0-18 "$@" euler/sweep.sbatch "$GEOM")
-echo "sweep array: $jid"
-sbatch --dependency=afterok:"$jid" --account=ls_math --job-name=epgp-collect \
+RANGE=$1; shift
+jid=$(sbatch --parsable ${SBATCH_EXTRA:-} --array="$RANGE" euler/array.sbatch "$@")
+echo "array job $jid: $* [$RANGE]"
+sbatch --dependency=afterok:"$jid" --account=ls_math --job-name=collect \
        --time=00:15:00 --ntasks=1 --cpus-per-task=2 --mem-per-cpu=4G \
-       --output="epgp_results/collect-%j.log" \
-       --wrap "export PATH=\$HOME/.local/bin:\$PATH; cd ~/cavity-dipoles; uv run epgp-convergence --geometry $GEOM --collect"
+       --output="collect-%j.log" \
+       --wrap "export PATH=\$HOME/.local/bin:\$PATH; cd ~/cavity-dipoles; uv run $* --collect"
 echo "collect queued (afterok:$jid)"
