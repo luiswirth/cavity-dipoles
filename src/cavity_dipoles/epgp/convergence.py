@@ -11,6 +11,7 @@ the BEM reference are derived afterward by results.aggregate.
 import argparse
 import csv
 import os
+import resource
 import time
 
 import jax
@@ -53,6 +54,11 @@ def main():
         norm = float(np.linalg.norm(T))
         log_noise = float(model.log_noise)
 
+        # Peak resident memory (cumulative high-water mark, KiB on Linux). The
+        # sweep runs n_spectral in increasing order, so this is a monotone
+        # memory-vs-resolution curve and the final row is the whole-job peak.
+        maxrss_kb = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+
         np.save(os.path.join(outdir, f"T_epgp_ns{ns}.npy"), T)
         rows.append({
             "n_spectral": ns,
@@ -63,19 +69,22 @@ def main():
             "cond": cond,
             "recip": recip,
             "norm": norm,
+            "maxrss_kb": maxrss_kb,
         })
         print(f"ns={ns:>5}  dofs={2 * ns:>5}  secs={secs:6.1f}  "
-              f"log_noise={log_noise:7.3f}  cond={cond:.3e}  recip={recip:.3e}")
+              f"log_noise={log_noise:7.3f}  cond={cond:.3e}  recip={recip:.3e}  "
+              f"maxrss={maxrss_kb / 1048576:.2f}GiB")
 
     manifest = os.path.join(outdir, "manifest.csv")
     with open(manifest, "w", newline="") as f:
         w = csv.writer(f)
         w.writerow(["n_spectral", "dofs", "n_boundary", "secs",
-                    "log_noise", "cond", "recip", "norm"])
+                    "log_noise", "cond", "recip", "norm", "maxrss_kb"])
         for r in rows:
             w.writerow([r["n_spectral"], r["dofs"], r["n_boundary"],
                         f"{r['secs']:.3f}", f"{r['log_noise']:.6f}",
-                        f"{r['cond']:.6e}", f"{r['recip']:.6e}", f"{r['norm']:.6e}"])
+                        f"{r['cond']:.6e}", f"{r['recip']:.6e}", f"{r['norm']:.6e}",
+                        r["maxrss_kb"]])
     print(f"wrote {manifest}: {len(rows)} runs")
 
 

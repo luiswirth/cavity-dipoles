@@ -25,8 +25,10 @@ def read_bem_manifest():
         for row in csv.reader(f):
             if not row or row[0].startswith("#"):
                 continue
-            _geom, p, m, dofs, _recip, secs = row
-            info[(int(p), int(m))] = {"dofs": int(dofs), "secs": int(secs)}
+            _geom, p, m, dofs, _recip, secs = row[:6]
+            maxrss = int(row[6]) if len(row) > 6 and row[6] else 0
+            info[(int(p), int(m))] = {"dofs": int(dofs), "secs": int(secs),
+                                      "maxrss": maxrss}
     return info
 
 
@@ -39,7 +41,7 @@ def aggregate_bem():
             continue
         T = load_bem(path)
         runs.append({"p": p, "m": m, "dofs": meta["dofs"], "secs": meta["secs"],
-                     "recip": reciprocity(T), "T": T})
+                     "maxrss": meta["maxrss"], "recip": reciprocity(T), "T": T})
     ref = min(runs, key=lambda r: r["recip"])
     nref = np.linalg.norm(ref["T"])
     for r in runs:
@@ -48,10 +50,10 @@ def aggregate_bem():
 
     with open(os.path.join(BEM, "results.csv"), "w", newline="") as f:
         w = csv.writer(f)
-        w.writerow(["p", "m", "dofs", "recip", "selfconv_vs_ref", "secs"])
+        w.writerow(["p", "m", "dofs", "recip", "selfconv_vs_ref", "secs", "maxrss_kb"])
         for r in runs:
             w.writerow([r["p"], r["m"], r["dofs"], f"{r['recip']:.6e}",
-                        f"{r['selfconv']:.6e}", r["secs"]])
+                        f"{r['selfconv']:.6e}", r["secs"], r["maxrss"]])
     print(f"BEM reference (lowest recip): p{ref['p']} m{ref['m']}, "
           f"dofs={ref['dofs']}, recip={ref['recip']:.2e}")
     return ref["T"]
@@ -67,6 +69,7 @@ def read_epgp_manifest(epgp_dir):
                 "secs": float(row["secs"]),
                 "log_noise": float(row["log_noise"]),
                 "cond": float(row["cond"]),
+                "maxrss": int(row["maxrss_kb"]) if row.get("maxrss_kb") else 0,
             })
     return sorted(rows, key=lambda r: r["ns"])
 
@@ -90,11 +93,12 @@ def aggregate_epgp(epgp_dir, T_ref, err_col):
     with open(path, "w", newline="") as f:
         w = csv.writer(f)
         w.writerow(["n_spectral", "dofs", "secs", "log_noise", "cond",
-                    "recip", "selfconv_vs_finest", err_col])
+                    "recip", "selfconv_vs_finest", err_col, "maxrss_kb"])
         for r in runs:
             w.writerow([r["ns"], r["dofs"], f"{r['secs']:.3f}",
                         f"{r['log_noise']:.6f}", f"{r['cond']:.6e}",
-                        f"{r['recip']:.6e}", f"{r['selfconv']:.6e}", f"{r['err']:.6e}"])
+                        f"{r['recip']:.6e}", f"{r['selfconv']:.6e}", f"{r['err']:.6e}",
+                        r["maxrss"]])
             print(f"  EP-GP ns={r['ns']:>5}  secs={r['secs']:6.1f}  cond={r['cond']:.2e}  "
                   f"recip={r['recip']:.3e}  selfconv={r['selfconv']:.3e}  err={r['err']:.3e}")
     print(f"wrote {path}")
