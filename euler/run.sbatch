@@ -6,6 +6,7 @@
 #SBATCH --cpus-per-task=16
 #SBATCH --mem-per-cpu=4G
 #SBATCH --constraint=EPYC_7742
+##SBATCH --exclusive
 #
 # Set up first on a login node:
 #   curl -LsSf https://astral.sh/uv/install.sh | sh   # once, if uv missing
@@ -14,6 +15,9 @@
 #   sbatch --array=1-2 euler/run.sbatch
 # 16 cores on an EPYC_7742 node matches the BEM reference run for a fair
 # same-hardware runtime comparison; the cgroup pins both to 16 cores.
+# Override the core count for a scaling scan:  sbatch --cpus-per-task=64 ...
+# Final headline timing only: pass --exclusive for a contention-free node
+# (or uncomment the ##SBATCH line above):     sbatch --exclusive ...
 set -euo pipefail
 export OMP_NUM_THREADS=${SLURM_CPUS_PER_TASK:-1}
 export OPENBLAS_NUM_THREADS=$OMP_NUM_THREADS MKL_NUM_THREADS=$OMP_NUM_THREADS

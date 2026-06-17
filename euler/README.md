@@ -16,7 +16,9 @@ SSH-agent forwarding must reach GitHub (for cloning this repo and the
 
 ## Run
 
-    sbatch --array=1-2 euler/run.sbatch   # 1=ellipse, 2=sphere
+    sbatch --array=1-2 euler/run.sbatch                    # 1=ellipse, 2=sphere
+    sbatch --array=1-2 --cpus-per-task=64 euler/run.sbatch # core-count scan point
+    sbatch --array=1-2 --exclusive euler/run.sbatch        # contention-free final timing
 
 Each task runs `epgp-convergence` for one geometry and copies the per-`n_spectral`
 operators and `manifest.csv` (wall-time, cond, recip, norm) into
