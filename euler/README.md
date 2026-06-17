@@ -4,6 +4,10 @@ EPGP convergence sweeps on ETH Euler, for a same-hardware runtime comparison
 against the BEM reference (`cavity-bem/euler`). Both run on 16 cores of an
 EPYC_7742 node.
 
+Jobs run under the `ls_math` shareholder account (`#SBATCH --account=ls_math`).
+Omitting it falls back to the `public` guest account, capped at 48 cores /
+128 GiB.
+
 ## Setup (login node, once)
 
 SSH-agent forwarding must reach GitHub (for cloning this repo and the

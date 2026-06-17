@@ -1,5 +1,6 @@
 #!/bin/bash
 #SBATCH --job-name=epgp
+#SBATCH --account=ls_math
 #SBATCH --output=epgp_results/slurm-%A_%a.log
 #SBATCH --time=04:00:00
 #SBATCH --ntasks=1
