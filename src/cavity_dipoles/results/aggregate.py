@@ -127,7 +127,7 @@ def main():
     k, _semi, points, e1, e2 = load_config(config)
 
     if args.geometry == "ellipse":
-        T_ref = aggregate_bem()                  # BEM table + p4m4 reference
+        T_ref = aggregate_bem()                  # BEM table + lowest-recip reference
         err_col = "err_vs_bem_ref"
     else:
         T_ref = reference_operator(args.geometry, k, points, e1, e2)
