@@ -21,13 +21,14 @@
 # (or uncomment the ##SBATCH line above):     sbatch --exclusive ...
 set -euo pipefail
 export OMP_NUM_THREADS=${SLURM_CPUS_PER_TASK:-1}
-export OPENBLAS_NUM_THREADS=$OMP_NUM_THREADS MKL_NUM_THREADS=$OMP_NUM_THREADS
+export OPENBLAS_NUM_THREADS=$OMP_NUM_THREADS MKL_NUM_THREADS=$OMP_NUM_THREADS NUMEXPR_NUM_THREADS=$OMP_NUM_THREADS
 export XLA_FLAGS="--xla_cpu_multi_thread_eigen=true"
 export PYTHONUNBUFFERED=1   # stream per-ns progress to the log instead of buffering
 ROOT=$(pwd); mkdir -p epgp_results
 GEOMS=(ellipse sphere)
 geom=${GEOMS[$((SLURM_ARRAY_TASK_ID - 1))]}
 echo "node=$(hostname) cpus=$SLURM_CPUS_PER_TASK geom=$geom"
-uv run epgp-convergence --geometry "$geom"
+# --cpu-bind=cores pins affinity so JAX sizes its threadpool to the allocation.
+srun --cpu-bind=cores uv run epgp-convergence --geometry "$geom"
 cp -r "out/${geom}_epgp" "epgp_results/${geom}_epgp"
 echo "done $geom"

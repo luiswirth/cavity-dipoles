@@ -30,8 +30,8 @@ class GPConfig:
     """Maxwell-GP conditioning hyperparameters (the solver's private settings)."""
 
     n_boundary: int = 1200
-    log_noise: float = -8.0
-    opt_noise: bool = True
+    log_noise: float = -12.0
+    opt_noise: bool = False
     opt_steps: int = 200
 
     @classmethod
@@ -198,8 +198,8 @@ def add_common(sp):
     sp.add_argument("config", nargs="?", default="res/config_ellipse.txt")
     sp.add_argument("--n-spectral", type=int, default=256)
     sp.add_argument("--n-boundary", type=int, default=1200)
-    sp.add_argument("--log-noise", type=float, default=-8.0)
-    sp.add_argument("--opt-noise", action=argparse.BooleanOptionalAction, default=True)
+    sp.add_argument("--log-noise", type=float, default=-12.0)
+    sp.add_argument("--opt-noise", action=argparse.BooleanOptionalAction, default=False)
     sp.add_argument("--opt-steps", type=int, default=200)
 
 

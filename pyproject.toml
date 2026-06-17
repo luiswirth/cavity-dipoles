@@ -11,6 +11,12 @@ dependencies = [
     "maxwellgp",
 ]
 
+# Optional CUDA backend: `uv sync --extra gpu` on a GPU node. JAX then runs the
+# EP-GP on GPU automatically; no code change. CPU stays the default for the
+# BEM-matched fairness comparison (Bembel is CPU-only).
+[project.optional-dependencies]
+gpu = ["jax[cuda12]>=0.8.1"]
+
 [project.scripts]
 gen-config = "cavity_dipoles.gen_config:main"
 epgp-operator = "cavity_dipoles.epgp.operators:main"

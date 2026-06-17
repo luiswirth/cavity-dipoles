@@ -18,12 +18,32 @@ SSH-agent forwarding must reach GitHub (for cloning this repo and the
     cd ~/cavity-dipoles
     uv sync
 
+For the GPU backend (optional, throughput only): `uv sync --extra gpu` on a GPU
+node and submit to a GPU partition; JAX uses the GPU automatically. The
+BEM-matched fairness comparison stays on CPU (Bembel is CPU-only).
+
 ## Run
 
-    sbatch --array=1-2 euler/run.sbatch                    # 1=ellipse, 2=sphere
-    sbatch --array=1-2 --cpus-per-task=64 euler/run.sbatch # core-count scan point
-    sbatch --array=1-2 --exclusive euler/run.sbatch        # contention-free final timing
+Preferred: one `n_spectral` per array task (job-level parallelism across the
+sweep). EP-GP does not scale past ~8-16 cores, so this, not more cores per task,
+is what makes a sweep finish fast.
 
-Each task runs `epgp-convergence` for one geometry and copies the per-`n_spectral`
-operators and `manifest.csv` (wall-time, cond, recip, norm) into
-`epgp_results/<geom>_epgp/`. Pull those back and feed them to `results.aggregate`.
+    euler/submit.sh ellipse                 # array + auto collect (afterok)
+    euler/submit.sh sphere --exclusive      # extra args forwarded to the array
+
+Or manually:
+
+    sbatch --array=0-18 euler/sweep.sbatch ellipse
+    uv run epgp-convergence --geometry ellipse --collect   # merge fragments
+
+Whole-sweep-in-one-job (simpler, slower):
+
+    sbatch --array=1-2 euler/run.sbatch     # 1=ellipse, 2=sphere
+
+Threads are pinned to the allocation via `srun --cpu-bind=cores` (else JAX
+oversubscribes the node's full core count). Add `--exclusive` for the big
+regeneration so each task gets a contention-free node (clean timing/memory).
+
+Results land in `epgp_results/<geom>_epgp/` (per-`n_spectral` operators +
+`manifest.csv` with wall-time, cond, recip, norm, maxrss + `provenance.json`).
+Pull them back; aggregation (which also needs the BEM reference) is a local step.
