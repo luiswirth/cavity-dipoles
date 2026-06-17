@@ -300,7 +300,13 @@ def main():
     bem = [{"p": int(r["p"]), "m": int(r["m"]), "dofs": int(r["dofs"]),
             "recip": float(r["recip"]), "selfconv_vs_ref": float(r["selfconv_vs_ref"])}
            for r in read_csv(os.path.join(ELLIPSE_BEM, "results.csv"))]
-    ref = min(bem, key=lambda r: r["recip"])
+    # Reference identity comes from the sidecar written by aggregate (the p6/m4
+    # reference is excluded from results.csv, so re-deriving min-recip here would
+    # mis-identify it). Fall back to the grid min only if the sidecar is absent.
+    ref_path = os.path.join(ELLIPSE_BEM, "reference.csv")
+    ref = ({**r, "p": int(r["p"]), "m": int(r["m"]), "recip": float(r["recip"])}
+           for r in read_csv(ref_path)) if os.path.exists(ref_path) else None
+    ref = next(ref) if ref is not None else min(bem, key=lambda r: r["recip"])
 
     fig_sphere_epgp_convergence(fmt)
     fig_ellipse_epgp_convergence(fmt)

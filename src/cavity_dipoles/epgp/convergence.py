@@ -73,36 +73,54 @@ NS_SWEEP = (16, 32, 64, 128, 256, 512, 1024)
 NB_SWEEP = (300, 600, 1200, 2400, 4800, 9600)
 GRID = [(ns, nb) for nb in NB_SWEEP for ns in NS_SWEEP]   # flat; ns varies fastest
 
+# Recorded quantities are only those NOT reconstructible from the saved operator:
+# dofs, secs, cond (the conditioned GP system, needs post.L), maxrss. recip and
+# ||T|| are functions of T and are computed in post-processing
+# (results.aggregate) from the saved T_epgp_*.npy. log_noise is a fixed input
+# (opt_noise=False), so it lives in provenance.json, not in every manifest row.
 MANIFEST_HEADER = ["n_spectral", "n_boundary", "dofs", "secs",
-                   "log_noise", "cond", "recip", "norm", "maxrss_kb"]
+                   "cond", "maxrss_kb"]
 FRAGMENT_DIR = "manifest.d"
 
 
-def run_one(base_cfg, semiaxes, k, points, e1, e2, ns, nb, outdir):
-    """Assemble the operator at one (n_spectral, n_boundary), save it, return row."""
+def run_one(base_cfg, semiaxes, k, points, e1, e2, ns, nb, outdir, warmup=False):
+    """Assemble the operator at one (n_spectral, n_boundary), save it, return row.
+
+    With warmup=True the operator is assembled once (discarded) to trigger JAX/XLA
+    compilation, then assembled again under timing, so `secs` is steady-state run
+    time with no compile cost folded in. XLA compiles per input shape, so the
+    warmup must use the same (ns, nb) as the timed call. Use it for the matched
+    runtime/memory comparison; the accuracy grid does not report timing and can
+    skip the 2x cost."""
     cfg = GPConfig(nb, base_cfg.log_noise, base_cfg.opt_noise, base_cfg.opt_steps)
+    if warmup:
+        tc = time.perf_counter()
+        assemble_operator(cfg, semiaxes, k, points, e1, e2, ns)
+        print(f"  warmup (compile+run) {time.perf_counter() - tc:6.1f}s discarded")
     t0 = time.perf_counter()
-    T, post, model = assemble_operator(cfg, semiaxes, k, points, e1, e2, ns)
+    T, post, _model = assemble_operator(cfg, semiaxes, k, points, e1, e2, ns)
     secs = time.perf_counter() - t0
 
     cond = float(np.linalg.cond(np.asarray(post.L @ post.L.conj().T)))
-    recip = float(np.linalg.norm(T - T.T) / np.linalg.norm(T))
-    norm = float(np.linalg.norm(T))
-    log_noise = float(model.log_noise)
-    maxrss_kb = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+    recip = float(np.linalg.norm(T - T.T) / np.linalg.norm(T))   # live sanity only
+    # Peak resident set (KiB on Linux): the kernel's true high-water mark, the
+    # best available peak-memory measure. Exact per grid point only in array mode
+    # (one point per process); a whole-sweep process would report just the
+    # largest point. /usr/bin/time -v can't replace it here -- it would measure
+    # the `uv run` launcher, not this Python process. Fold in children too.
+    maxrss_kb = (resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+                 + resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss)
 
     np.save(os.path.join(outdir, f"T_epgp_ns{ns}_nb{nb}.npy"), T)
     print(f"ns={ns:>5} nb={nb:>5}  dofs={2 * ns:>5}  secs={secs:6.1f}  "
           f"cond={cond:.3e}  recip={recip:.3e}  maxrss={maxrss_kb / 1048576:.2f}GiB")
     return {"n_spectral": ns, "n_boundary": nb, "dofs": 2 * ns, "secs": secs,
-            "log_noise": log_noise, "cond": cond, "recip": recip,
-            "norm": norm, "maxrss_kb": maxrss_kb}
+            "cond": cond, "maxrss_kb": maxrss_kb}
 
 
 def _row_values(r):
     return [r["n_spectral"], r["n_boundary"], r["dofs"], f"{r['secs']:.3f}",
-            f"{r['log_noise']:.6f}", f"{r['cond']:.6e}", f"{r['recip']:.6e}",
-            f"{r['norm']:.6e}", r["maxrss_kb"]]
+            f"{r['cond']:.6e}", r["maxrss_kb"]]
 
 
 def write_manifest(outdir, rows):
@@ -160,6 +178,9 @@ def main():
                     help="run a single GRID entry by flat index (for SLURM array tasks)")
     ap.add_argument("--collect", action="store_true",
                     help="merge per-grid-point fragments into manifest.csv, then exit")
+    ap.add_argument("--warmup", action="store_true",
+                    help="assemble once to compile before the timed run, so secs "
+                         "excludes JAX/XLA compile (for the runtime/memory comparison)")
     args = ap.parse_args()
 
     outdir = args.outdir or out_dir(args.geometry)
@@ -177,12 +198,13 @@ def main():
 
     if args.index is not None:
         ns, nb = GRID[args.index]
-        row = run_one(cfg, semiaxes, k, points, e1, e2, ns, nb, outdir)
+        row = run_one(cfg, semiaxes, k, points, e1, e2, ns, nb, outdir, args.warmup)
         write_fragment(outdir, row)
         write_provenance(outdir, cfg, k, args.geometry)
         return
 
-    rows = [run_one(cfg, semiaxes, k, points, e1, e2, ns, nb, outdir) for ns, nb in GRID]
+    rows = [run_one(cfg, semiaxes, k, points, e1, e2, ns, nb, outdir, args.warmup)
+            for ns, nb in GRID]
     path = write_manifest(outdir, rows)
     print(f"wrote {path}: {len(rows)} grid points")
     write_provenance(outdir, cfg, k, args.geometry)
