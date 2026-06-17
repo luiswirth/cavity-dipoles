@@ -46,7 +46,7 @@ always `uv run`.
 ## Running
 
 All heavy runs go on ETH Euler now, not locally. See `euler/README.md` for the
-array workflow (`euler/array.sbatch`, `euler/submit.sh`), thread pinning, the
+array workflow (`euler/run.sbatch`), thread pinning, the
 `ls_math` account, and GPU. Pull artifacts back; aggregation + plotting are local.
 
 ## Data flow

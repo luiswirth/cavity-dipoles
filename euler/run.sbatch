@@ -1,34 +1,34 @@
 #!/bin/bash
-#SBATCH --job-name=epgp
+#SBATCH --job-name=cd-array
 #SBATCH --account=ls_math
-#SBATCH --output=epgp_results/slurm-%A_%a.log
-#SBATCH --time=04:00:00
+#SBATCH --output=slurm-%A_%a.log
+#SBATCH --time=00:30:00
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=16
-#SBATCH --mem-per-cpu=4G
+#SBATCH --mem-per-cpu=2G
 #SBATCH --constraint=EPYC_7742
 ##SBATCH --exclusive
 #
-# Set up first on a login node:
-#   curl -LsSf https://astral.sh/uv/install.sh | sh   # once, if uv missing
-#   uv sync   # needs SSH-agent forwarding to clone the maxwellgp git dep
-# Submit one geometry per array index (1=ellipse, 2=sphere):
-#   sbatch --array=1-2 euler/run.sbatch
-# 16 cores on an EPYC_7742 node matches the BEM reference run for a fair
-# same-hardware runtime comparison; the cgroup pins both to 16 cores.
-# Override the core count for a scaling scan:  sbatch --cpus-per-task=64 ...
-# Final headline timing only: pass --exclusive for a contention-free node
-# (or uncomment the ##SBATCH line above):     sbatch --exclusive ...
+# Run any --index-aware entry point as a SLURM array (one index per task):
+#   sbatch --array=0-59 euler/run.sbatch epgp-convergence --geometry ellipse
+#   sbatch --array=0-4  euler/run.sbatch epgp-sweep       --geometry ellipse
+#   sbatch --array=0-9  euler/run.sbatch epgp-resonance   --geometry ellipse --nchunks 10
+# (convergence GRID is 10 n_spectral x 6 n_boundary = 60 points -> 0-59)
+# Each task writes a per-grid-point fragment; merge them afterwards (local,
+# alongside aggregate, since aggregate also needs the BEM reference):
+#   uv run epgp-convergence --geometry <geom> --collect
+# Mirrors the BEM side (sbatch the array, then post-process locally). The accuracy
+# grid runs on shared nodes; the matched runtime comparison is a separate small
+# --exclusive pass with --warmup (see README). EP-GP needs only modest memory
+# (corner ~3 GiB); 2G/cpu = 32 GiB is ample. It does not scale past ~8-16 cores,
+# so parallelism across the array, not more cores per task, is what makes it fast.
 set -euo pipefail
-export OMP_NUM_THREADS=${SLURM_CPUS_PER_TASK:-1}
-export OPENBLAS_NUM_THREADS=$OMP_NUM_THREADS MKL_NUM_THREADS=$OMP_NUM_THREADS NUMEXPR_NUM_THREADS=$OMP_NUM_THREADS
+export PATH="$HOME/.local/bin:$PATH"
+C=$SLURM_CPUS_PER_TASK
+export OMP_NUM_THREADS=$C OPENBLAS_NUM_THREADS=$C MKL_NUM_THREADS=$C NUMEXPR_NUM_THREADS=$C
 export XLA_FLAGS="--xla_cpu_multi_thread_eigen=true"
-export PYTHONUNBUFFERED=1   # stream per-ns progress to the log instead of buffering
-ROOT=$(pwd); mkdir -p epgp_results
-GEOMS=(ellipse sphere)
-geom=${GEOMS[$((SLURM_ARRAY_TASK_ID - 1))]}
-echo "node=$(hostname) cpus=$SLURM_CPUS_PER_TASK geom=$geom"
-# --cpu-bind=cores pins affinity so JAX sizes its threadpool to the allocation.
-srun --cpu-bind=cores uv run epgp-convergence --geometry "$geom"
-cp -r "out/${geom}_epgp" "epgp_results/${geom}_epgp"
-echo "done $geom"
+export PYTHONUNBUFFERED=1
+mkdir -p epgp_results
+# --cpu-bind=cores pins affinity to the allocation so JAX sizes its threadpool
+# to $C instead of the whole node (avoids oversubscription).
+srun --cpu-bind=cores uv run "$@" --index "$SLURM_ARRAY_TASK_ID"

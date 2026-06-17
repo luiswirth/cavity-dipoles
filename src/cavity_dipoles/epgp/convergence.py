@@ -69,9 +69,9 @@ def write_provenance(outdir, cfg, k, geometry):
 #   n_spectral  -- plane-wave feature richness (like p)
 #   n_boundary  -- boundary-collocation density (like h/m)
 # The study is the full grid; the best operator is the high corner of both.
-NS_SWEEP = (16, 32, 64, 128, 256, 512, 1024)
-NB_SWEEP = (300, 600, 1200, 2400, 4800, 9600)
-GRID = [(ns, nb) for nb in NB_SWEEP for ns in NS_SWEEP]   # flat; ns varies fastest
+NS_SWEEP = (16, 32, 64, 128, 192, 256, 384, 512, 768, 1024)   # 10, densified descent
+NB_SWEEP = (256, 512, 1024, 2048, 4096, 8192)                 # 6, powers of 2
+GRID = [(ns, nb) for nb in NB_SWEEP for ns in NS_SWEEP]   # flat 60 pts; ns fastest
 
 # Recorded quantities are only those NOT reconstructible from the saved operator:
 # dofs, secs, cond (the conditioned GP system, needs post.L), maxrss. recip and
