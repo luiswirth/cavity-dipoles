@@ -3,7 +3,7 @@
 Mirrors the generation/analysis split forced by the BEM side. The EPGP operators
 and their raw manifest are produced separately (epgp.convergence); here we add the
 self-convergence to the finest run and the error against the benchmark reference
-(BEM for the ellipse, the exact analytic operator for the sphere).
+(BEM ref for the ellipse, analytic for the sphere).
 """
 
 import argparse
@@ -16,17 +16,17 @@ from ..benchmark import bem_reference_path, config_path, out_dir, reference_oper
 from cavity_epgp import load_config
 from .compare import load_bem, load_epgp, reciprocity
 
-BEM = os.path.join("out", "bem", "grid", "ellipse")
+
+def bem_grid_dir(geometry):
+    return os.path.join("out", "bem", "grid", geometry)
 
 
-def read_bem_manifest():
+def read_bem_manifest(bem_dir):
     info = {}
-    with open(os.path.join(BEM, "manifest.csv")) as f:
+    with open(os.path.join(bem_dir, "manifest.csv")) as f:
         for row in csv.reader(f):
             if not row or row[0].startswith("#"):
                 continue
-            # manifest columns: P, M, dofs, secs, mem_kb, cond. recip and ||T||
-            # are NOT recorded; they are computed below from the saved T.
             p, m, dofs, secs, mem = row[:5]
             cond = float(row[5]) if len(row) > 5 and row[5] else 0.0
             info[(int(p), int(m))] = {"dofs": int(dofs), "secs": int(secs),
@@ -35,44 +35,34 @@ def read_bem_manifest():
     return info
 
 
-def aggregate_bem():
-    info = read_bem_manifest()
+def aggregate_bem(geometry, T_ref):
+    bem_dir = bem_grid_dir(geometry)
+    info = read_bem_manifest(bem_dir)
+    nref = np.linalg.norm(T_ref)
     runs = []
     for (p, m), meta in info.items():
-        path = os.path.join(BEM, f"T_p{p}_m{m}.dat")
+        path = os.path.join(bem_dir, f"T_p{p}_m{m}.dat")
         if not os.path.exists(path):
             continue
         T = load_bem(path)
         runs.append({"p": p, "m": m, "dofs": meta["dofs"], "secs": meta["secs"],
                      "mem": meta["mem"], "cond": meta["cond"],
                      "norm": float(np.linalg.norm(T)), "recip": reciprocity(T),
-                     "T": T})
-    # Reference is BEM_REFERENCE, declared once in benchmark.py and loaded from
-    # its own operator file -- never picked implicitly, and it need NOT be one of
-    # the grid runs (it may be a separate, finer run outside the (p,m) grid).
-    ref_path = bem_reference_path()
-    if not os.path.exists(ref_path):
-        raise FileNotFoundError(f"BEM reference operator missing: {ref_path}")
-    T_ref = load_bem(ref_path)
-    nref = np.linalg.norm(T_ref)
-    for r in runs:
-        r["selfconv"] = np.linalg.norm(r["T"] - T_ref) / nref
+                     "selfconv": np.linalg.norm(T - T_ref) / nref, "T": T})
     runs.sort(key=lambda r: (r["p"], r["m"]))
 
-    with open(os.path.join(BEM, "results.csv"), "w", newline="") as f:
+    err_col = "err_vs_bem_ref" if geometry == "ellipse" else "err_vs_analytic"
+    with open(os.path.join(bem_dir, "results.csv"), "w", newline="") as f:
         w = csv.writer(f)
-        w.writerow(["p", "m", "dofs", "recip", "selfconv_vs_ref", "secs",
-                    "mem_kb", "norm", "cond"])
+        w.writerow(["p", "m", "dofs", "recip", err_col, "secs", "mem_kb", "norm", "cond"])
         for r in runs:
             w.writerow([r["p"], r["m"], r["dofs"], f"{r['recip']:.6e}",
                         f"{r['selfconv']:.6e}", r["secs"], r["mem"],
                         f"{r['norm']:.6e}", f"{r['cond']:.6e}"])
-    print(f"BEM reference: {ref_path}")
-    return T_ref
+    print(f"BEM {geometry}: wrote {bem_dir}/results.csv")
 
 
 def read_epgp_manifest(epgp_dir):
-    # manifest columns (headerless): n_spectral, n_boundary, dofs, secs, mem_kb, cond
     rows = []
     with open(os.path.join(epgp_dir, "manifest.csv")) as f:
         for row in csv.reader(f):
@@ -81,7 +71,7 @@ def read_epgp_manifest(epgp_dir):
             ns, nb, dofs, secs, mem = row[:5]
             rows.append({
                 "ns": int(ns), "nb": int(nb), "dofs": int(dofs),
-                "secs": float(secs),
+                "secs": int(secs),
                 "mem": int(mem) if mem else 0,
                 "cond": float(row[5]) if len(row) > 5 and row[5] else 0.0,
             })
@@ -96,14 +86,14 @@ def aggregate_epgp(epgp_dir, T_ref, err_col):
     runs = read_epgp_manifest(epgp_dir)
     Ts = {(r["ns"], r["nb"]): load_epgp(
         os.path.join(epgp_dir, f"T_ns{r['ns']}_nb{r['nb']}.npy")) for r in runs}
-    corner = max(Ts)                              # (max ns, max nb) present
+    corner = max(Ts)
     Tfinest = Ts[corner]
     nfinest = np.linalg.norm(Tfinest)
 
     for r in runs:
         T = Ts[(r["ns"], r["nb"])]
-        r["norm"] = float(np.linalg.norm(T))     # derived from saved T
-        r["recip"] = reciprocity(T)              # derived from saved T
+        r["norm"] = float(np.linalg.norm(T))
+        r["recip"] = reciprocity(T)
         r["selfconv"] = np.linalg.norm(T - Tfinest) / nfinest
         r["err"] = np.linalg.norm(T - T_ref) / nref
 
@@ -113,7 +103,7 @@ def aggregate_epgp(epgp_dir, T_ref, err_col):
         w.writerow(["n_spectral", "n_boundary", "dofs", "secs", "cond",
                     "norm", "recip", "selfconv_vs_finest", err_col, "mem_kb"])
         for r in runs:
-            w.writerow([r["ns"], r["nb"], r["dofs"], f"{r['secs']:.3f}",
+            w.writerow([r["ns"], r["nb"], r["dofs"], r["secs"],
                         f"{r['cond']:.6e}", f"{r['norm']:.6e}",
                         f"{r['recip']:.6e}", f"{r['selfconv']:.6e}", f"{r['err']:.6e}",
                         r["mem"]])
@@ -128,21 +118,30 @@ def main():
     ap.add_argument("--config", default=None)
     args = ap.parse_args()
 
-    od = out_dir(args.geometry)
     config = args.config or config_path(args.geometry)
     k, _semi, points, e1, e2 = load_config(config)
 
     if args.geometry == "ellipse":
-        T_ref = aggregate_bem()                  # BEM table + lowest-recip reference
-        err_col = "err_vs_bem_ref"
+        ref_path = bem_reference_path()
+        if not os.path.exists(ref_path):
+            raise FileNotFoundError(f"BEM reference operator missing: {ref_path}")
+        T_ref = load_bem(ref_path)
+        print(f"BEM reference: {ref_path}")
     else:
         T_ref = reference_operator(args.geometry, k, points, e1, e2)
-        err_col = "err_vs_analytic"
 
-    if os.path.exists(os.path.join(od, "manifest.csv")):
-        aggregate_epgp(od, T_ref, err_col)
+    bem_dir = bem_grid_dir(args.geometry)
+    if os.path.exists(os.path.join(bem_dir, "manifest.csv")):
+        aggregate_bem(args.geometry, T_ref)
     else:
-        print(f"(no EP-GP manifest in {od}/; run epgp-convergence)")
+        print(f"(no BEM manifest in {bem_dir}/; run bem-grid)")
+
+    epgp_dir = out_dir(args.geometry)
+    if os.path.exists(os.path.join(epgp_dir, "manifest.csv")):
+        err_col = "err_vs_bem_ref" if args.geometry == "ellipse" else "err_vs_analytic"
+        aggregate_epgp(epgp_dir, T_ref, err_col)
+    else:
+        print(f"(no EP-GP manifest in {epgp_dir}/; run epgp-grid)")
 
 
 if __name__ == "__main__":
