@@ -1,9 +1,8 @@
 """Analysis step: turn raw generated operators into convergence tables.
 
 Mirrors the generation/analysis split forced by the BEM side. The EPGP operators
-and their raw manifest are produced separately (epgp.convergence); here we add the
-self-convergence to the finest run and the error against the benchmark reference
-(BEM ref for the ellipse, analytic for the sphere).
+and their raw manifest are produced separately (epgp.convergence); here we add
+derived quantities (norm, recip, err) so downstream plotting never loads operators.
 """
 
 import argparse
@@ -45,20 +44,28 @@ def aggregate_bem(geometry, T_ref):
         if not os.path.exists(path):
             continue
         T = load_bem(path)
-        runs.append({"p": p, "m": m, "dofs": meta["dofs"], "secs": meta["secs"],
-                     "mem": meta["mem"], "cond": meta["cond"],
-                     "norm": float(np.linalg.norm(T)), "recip": reciprocity(T),
-                     "selfconv": np.linalg.norm(T - T_ref) / nref, "T": T})
+        r = {"p": p, "m": m, "dofs": meta["dofs"], "secs": meta["secs"],
+             "mem": meta["mem"], "cond": meta["cond"],
+             "norm": float(np.linalg.norm(T))}
+        if geometry == "ellipse":
+            r["recip"] = reciprocity(T)
+        else:
+            r["err"] = np.linalg.norm(T - T_ref) / nref
+        runs.append(r)
     runs.sort(key=lambda r: (r["p"], r["m"]))
 
-    err_col = "err_vs_bem_ref" if geometry == "ellipse" else "err_vs_analytic"
     with open(os.path.join(bem_dir, "results.csv"), "w", newline="") as f:
         w = csv.writer(f)
-        w.writerow(["p", "m", "dofs", "recip", err_col, "secs", "mem_kb", "norm", "cond"])
-        for r in runs:
-            w.writerow([r["p"], r["m"], r["dofs"], f"{r['recip']:.6e}",
-                        f"{r['selfconv']:.6e}", r["secs"], r["mem"],
-                        f"{r['norm']:.6e}", f"{r['cond']:.6e}"])
+        if geometry == "ellipse":
+            w.writerow(["p", "m", "dofs", "secs", "mem_kb", "cond", "norm", "recip"])
+            for r in runs:
+                w.writerow([r["p"], r["m"], r["dofs"], r["secs"], r["mem"],
+                            f"{r['cond']:.6e}", f"{r['norm']:.6e}", f"{r['recip']:.6e}"])
+        else:
+            w.writerow(["p", "m", "dofs", "secs", "mem_kb", "cond", "norm", "err"])
+            for r in runs:
+                w.writerow([r["p"], r["m"], r["dofs"], r["secs"], r["mem"],
+                            f"{r['cond']:.6e}", f"{r['norm']:.6e}", f"{r['err']:.6e}"])
     print(f"BEM {geometry}: wrote {bem_dir}/results.csv")
 
 
@@ -78,37 +85,40 @@ def read_epgp_manifest(epgp_dir):
     return sorted(rows, key=lambda r: (r["nb"], r["ns"]))
 
 
-def aggregate_epgp(epgp_dir, T_ref, err_col):
-    """Combine the EPGP manifest with the saved operators over the
-    (n_spectral, n_boundary) grid: self-convergence is measured against the
-    finest corner (max n_spectral, max n_boundary); err is vs the reference."""
+def aggregate_epgp(epgp_dir, T_ref, is_ellipse):
+    """Combine the EPGP manifest with the saved operators. Ellipse: recip + err.
+    Sphere: err only (analytic reference, recip unnecessary)."""
     nref = np.linalg.norm(T_ref)
     runs = read_epgp_manifest(epgp_dir)
     Ts = {(r["ns"], r["nb"]): load_epgp(
         os.path.join(epgp_dir, f"T_ns{r['ns']}_nb{r['nb']}.npy")) for r in runs}
-    corner = max(Ts)
-    Tfinest = Ts[corner]
-    nfinest = np.linalg.norm(Tfinest)
 
     for r in runs:
         T = Ts[(r["ns"], r["nb"])]
         r["norm"] = float(np.linalg.norm(T))
-        r["recip"] = reciprocity(T)
-        r["selfconv"] = np.linalg.norm(T - Tfinest) / nfinest
         r["err"] = np.linalg.norm(T - T_ref) / nref
+        if is_ellipse:
+            r["recip"] = reciprocity(T)
 
     path = os.path.join(epgp_dir, "results.csv")
     with open(path, "w", newline="") as f:
         w = csv.writer(f)
-        w.writerow(["n_spectral", "n_boundary", "dofs", "secs", "cond",
-                    "norm", "recip", "selfconv_vs_finest", err_col, "mem_kb"])
+        if is_ellipse:
+            w.writerow(["n_spectral", "n_boundary", "dofs", "secs", "mem_kb",
+                        "cond", "norm", "recip", "err"])
+        else:
+            w.writerow(["n_spectral", "n_boundary", "dofs", "secs", "mem_kb",
+                        "cond", "norm", "err"])
         for r in runs:
-            w.writerow([r["ns"], r["nb"], r["dofs"], r["secs"],
-                        f"{r['cond']:.6e}", f"{r['norm']:.6e}",
-                        f"{r['recip']:.6e}", f"{r['selfconv']:.6e}", f"{r['err']:.6e}",
-                        r["mem"]])
-            print(f"  EP-GP ns={r['ns']:>5} nb={r['nb']:>5}  recip={r['recip']:.3e}  "
-                  f"selfconv={r['selfconv']:.3e}  err={r['err']:.3e}")
+            row = [r["ns"], r["nb"], r["dofs"], r["secs"], r["mem"],
+                   f"{r['cond']:.6e}", f"{r['norm']:.6e}"]
+            if is_ellipse:
+                row += [f"{r['recip']:.6e}", f"{r['err']:.6e}"]
+                print(f"  EP-GP ns={r['ns']:>5} nb={r['nb']:>5}  recip={r['recip']:.3e}  err={r['err']:.3e}")
+            else:
+                row += [f"{r['err']:.6e}"]
+                print(f"  EP-GP ns={r['ns']:>5} nb={r['nb']:>5}  err={r['err']:.3e}")
+            w.writerow(row)
     print(f"wrote {path}")
 
 
@@ -120,8 +130,9 @@ def main():
 
     config = args.config or config_path(args.geometry)
     k, _semi, points, e1, e2 = load_config(config)
+    is_ellipse = args.geometry == "ellipse"
 
-    if args.geometry == "ellipse":
+    if is_ellipse:
         ref_path = bem_reference_path()
         if not os.path.exists(ref_path):
             raise FileNotFoundError(f"BEM reference operator missing: {ref_path}")
@@ -138,8 +149,7 @@ def main():
 
     epgp_dir = out_dir(args.geometry)
     if os.path.exists(os.path.join(epgp_dir, "manifest.csv")):
-        err_col = "err_vs_bem_ref" if args.geometry == "ellipse" else "err_vs_analytic"
-        aggregate_epgp(epgp_dir, T_ref, err_col)
+        aggregate_epgp(epgp_dir, T_ref, is_ellipse)
     else:
         print(f"(no EP-GP manifest in {epgp_dir}/; run epgp-grid)")
 
