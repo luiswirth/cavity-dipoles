@@ -3,7 +3,7 @@
 Two benchmarks share one EPGP convergence study, differing only in the reference
 the EPGP operator is compared against:
   * ellipse -- semi-axes (4, 4, 6); reference is the deterministic BEM operator
-    at BEM_REFERENCE (the high corner of the (p,m) grid for now);
+    from out/bem/ref/ellipse/ (produced by cavity-bem/euler/submit_ref.sh);
   * sphere  -- semi-axes (R, R, R); reference is the exact analytic operator of
     sphere.reaction_operator_sphere.
 
@@ -13,6 +13,7 @@ operators and a raw manifest for a given geometry, and results.aggregate then
 compares them to the reference returned here.
 """
 
+import glob
 import os
 
 from .results.compare import load_bem
@@ -20,17 +21,15 @@ from .sphere import reaction_operator_sphere
 
 GEOMETRIES = {"ellipse": (4.0, 4.0, 6.0), "sphere": (4.0, 4.0, 4.0)}
 
-# The single, explicit declaration of the BEM reference for the ellipse
-# cross-validation, as the (p, m) of the run whose operator is the reference.
-# Every consumer (benchmark.reference_operator, results.aggregate, the figures)
-# reads this -- nothing picks the reference implicitly. The high corner of the
-# (p, m) grid for now; bump to a finer (p, m) when a finer reference is computed.
-BEM_REFERENCE = (5, 4)
-
 
 def bem_reference_path():
-    p, m = BEM_REFERENCE
-    return os.path.join("out", "bem", "ellipse", f"T_p{p}_m{m}.dat")
+    pattern = os.path.join("out", "bem", "ref", "ellipse", "T_p*.dat")
+    matches = glob.glob(pattern)
+    if not matches:
+        raise FileNotFoundError(f"no BEM reference operator found at {pattern}")
+    if len(matches) > 1:
+        raise RuntimeError(f"multiple BEM reference operators found: {matches}; expected exactly one")
+    return matches[0]
 
 
 def semiaxes(name):
@@ -42,7 +41,7 @@ def config_path(name):
 
 
 def out_dir(name):
-    return os.path.join("out", "epgp", name)
+    return os.path.join("out", "epgp", "grid", name)
 
 
 def reference_operator(name, k, points, e1, e2):

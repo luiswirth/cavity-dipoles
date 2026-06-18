@@ -12,12 +12,11 @@ import os
 
 import numpy as np
 
-from ..benchmark import (BEM_REFERENCE, bem_reference_path, config_path, out_dir,
-                         reference_operator)
+from ..benchmark import bem_reference_path, config_path, out_dir, reference_operator
 from cavity_epgp import load_config
 from .compare import load_bem, load_epgp, reciprocity
 
-BEM = os.path.join("out", "bem", "ellipse")
+BEM = os.path.join("out", "bem", "grid", "ellipse")
 
 
 def read_bem_manifest():
@@ -53,8 +52,7 @@ def aggregate_bem():
     # the grid runs (it may be a separate, finer run outside the (p,m) grid).
     ref_path = bem_reference_path()
     if not os.path.exists(ref_path):
-        raise FileNotFoundError(
-            f"BEM reference p{BEM_REFERENCE[0]} m{BEM_REFERENCE[1]} operator missing: {ref_path}")
+        raise FileNotFoundError(f"BEM reference operator missing: {ref_path}")
     T_ref = load_bem(ref_path)
     nref = np.linalg.norm(T_ref)
     for r in runs:
@@ -69,7 +67,7 @@ def aggregate_bem():
             w.writerow([r["p"], r["m"], r["dofs"], f"{r['recip']:.6e}",
                         f"{r['selfconv']:.6e}", r["secs"], r["mem"],
                         f"{r['norm']:.6e}", f"{r['cond']:.6e}"])
-    print(f"BEM reference p{BEM_REFERENCE[0]} m{BEM_REFERENCE[1]} (BEM_REFERENCE)")
+    print(f"BEM reference: {ref_path}")
     return T_ref
 
 
