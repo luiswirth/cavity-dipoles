@@ -8,23 +8,8 @@
 #SBATCH --mem-per-cpu=2G
 #SBATCH --constraint=EPYC_7742
 #
-# Run the convergence study as a SLURM array (one grid point per task):
 #   sbatch --array=0-59 euler/run.sbatch epgp-convergence --geometry ellipse
-# (convergence GRID is 10 n_spectral x 6 n_boundary = 60 points -> 0-59)
-# Each task writes a per-grid-point fragment; merge them afterwards (local,
-# alongside aggregate, since aggregate also needs the BEM reference):
-#   uv run epgp-convergence --geometry <geom> --collect
-# Mirrors the BEM side (sbatch the array, then post-process locally). EP-GP needs
-# only modest memory (corner ~3 GiB); 2G/cpu = 32 GiB is ample. It does not scale
-# past ~8-16 cores, so parallelism across the array, not more cores per task, is
-# what makes it fast.
 set -euo pipefail
 export PATH="$HOME/.local/bin:$PATH"
-C=$SLURM_CPUS_PER_TASK
-export OMP_NUM_THREADS=$C OPENBLAS_NUM_THREADS=$C MKL_NUM_THREADS=$C NUMEXPR_NUM_THREADS=$C
-export XLA_FLAGS="--xla_cpu_multi_thread_eigen=true"
-export PYTHONUNBUFFERED=1
-mkdir -p epgp_results
-# --cpu-bind=cores pins affinity to the allocation so JAX sizes its threadpool
-# to $C instead of the whole node (avoids oversubscription).
+export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK OPENBLAS_NUM_THREADS=$SLURM_CPUS_PER_TASK
 srun --cpu-bind=cores uv run "$@" --index "$SLURM_ARRAY_TASK_ID"
