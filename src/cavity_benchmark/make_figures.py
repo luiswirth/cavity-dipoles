@@ -10,8 +10,8 @@ MODES = ["real", "phase", "lic"]
 # cavity is the default benchmark; the spherical cavity is rendered too when its
 # slice exists.
 FIELD_SLICES = [
-    (os.path.join("out", "epgp", "grid", "ellipse", "field.npz"), "epgp_ellipse_field", True),
-    (os.path.join("out", "epgp", "grid", "sphere", "field.npz"), "epgp_sphere_field", False),
+    (os.path.join("out", "epgp", "ref", "ellipse", "field.npz"), "epgp_ellipse_field", True),
+    (os.path.join("out", "epgp", "ref", "sphere", "field.npz"), "epgp_sphere_field", False),
 ]
 
 AGG = "cavity_benchmark.results.aggregate"
