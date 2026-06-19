@@ -76,7 +76,8 @@ def _panel(ax, bem_rows, epgp_rows, ycol, ylabel, title):
 
     ax.set_xscale("log"); ax.set_yscale("log")
     ax.set_xlabel("wall time [s]"); ax.set_ylabel(ylabel)
-    ax.set_title(title)
+    if title:
+        ax.set_title(title)
     ax.legend(frameon=False)
     ax.grid(True, which="major", alpha=0.35)
     ax.grid(True, which="minor", alpha=0.12)
@@ -96,12 +97,12 @@ def fig_pareto(fmt="svg"):
     L_ERR = r"relative error $\varepsilon$"
 
     fig1, axes1 = plt.subplots(1, 2, figsize=(11, 4.4), layout="constrained")
-    _panel(axes1[0], bem_sphere, epgp_sphere, "err",   L_ERR, "Spherical cavity")
-    _panel(axes1[1], bem_sphere, epgp_sphere, "recip", L_RHO, "Spherical cavity")
+    _panel(axes1[0], bem_sphere, epgp_sphere, "err",   L_ERR, None)
+    _panel(axes1[1], bem_sphere, epgp_sphere, "recip", L_RHO, None)
     save(fig1, "pareto_sphere", fmt)
 
     fig2, ax2 = plt.subplots(1, 1, figsize=(5.5, 4.4), layout="constrained")
-    _panel(ax2, bem_ellipse, epgp_ellipse, "recip", L_RHO, "Ellipsoidal cavity")
+    _panel(ax2, bem_ellipse, epgp_ellipse, "recip", L_RHO, None)
     save(fig2, "pareto_ellipse", fmt)
 
 
