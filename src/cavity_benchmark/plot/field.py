@@ -8,12 +8,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from .common import (COMP, COMP_LABEL, DEFAULT_NPZ, FIGS, align_phase,
-                     clip_vmax, decorate, domain_rgb, grab_frames,
+                     clip_vmax, decorate, domain_rgb, emag, grab_frames,
                      load_slice, save_webp, setup_style)
 from .field_lic import FINE, FINE_ANIM, lic_rgb
 
 PANELS = [("Einc", "i"), ("Escat", "s"), ("Etot", "tot")]
-FIGSIZE3 = (15.0, 6.2)
 
 
 def _ext(S):
@@ -111,10 +110,23 @@ def lic_anim(fig, ax, S, frames):
     return update
 
 
+# --- posterior uncertainty magnitude --------------------------------------
+
+def std_static(fig, ax, S):
+    std = emag(S["Escat_std"])
+    v = clip_vmax(std, S["mask"])
+    im = ax[0].pcolormesh(S["xs"], S["zs"], np.where(S["mask"], std, np.nan),
+                          shading="gouraud", cmap="magma", vmin=0.0, vmax=v,
+                          rasterized=True)
+    decorate(ax[0], S["a"], S["c"], S["src"], r"$\sigma[\mathbf{E}^{\mathrm{s}}]$")
+    fig.colorbar(im, ax=ax[0], fraction=0.046, pad=0.04)
+
+
 MODES = {
-    "real": (real_static, real_anim),
-    "phase": (phase_static, phase_anim),
-    "lic": (lic_static, lic_anim),
+    "real": (real_static, real_anim, 3),
+    "phase": (phase_static, phase_anim, 3),
+    "lic": (lic_static, lic_anim, 3),
+    "std": (std_static, None, 1),
 }
 
 
@@ -134,9 +146,12 @@ def main():
     ext = "webp" if args.animate else "png"
     out = args.out or os.path.join(FIGS, f"field_{args.mode}{'_anim' if args.animate else ''}.{ext}")
 
-    static_fn, anim_fn = MODES[args.mode]
-    fig, ax = plt.subplots(1, 3, figsize=FIGSIZE3)
+    static_fn, anim_fn, ncols = MODES[args.mode]
+    fig, ax = plt.subplots(1, ncols, figsize=(5.0 * ncols, 6.2), squeeze=False)
+    ax = ax[0]
     if args.animate:
+        if anim_fn is None:
+            raise SystemExit(f"mode {args.mode!r} has no animation")
         update = anim_fn(fig, ax, S, args.frames)
         fig.tight_layout()
         save_webp(grab_frames(fig, update, args.frames), out, args.fps)

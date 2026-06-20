@@ -47,9 +47,8 @@ def aggregate_bem(geometry, T_ref):
         r = {"p": p, "m": m, "dofs": meta["dofs"], "secs": meta["secs"],
              "mem": meta["mem"], "cond": meta["cond"],
              "norm": float(np.linalg.norm(T))}
-        if geometry == "ellipse":
-            r["recip"] = reciprocity(T)
-        else:
+        r["recip"] = reciprocity(T)
+        if geometry != "ellipse":
             r["err"] = np.linalg.norm(T - T_ref) / nref
         runs.append(r)
     runs.sort(key=lambda r: (r["p"], r["m"]))
@@ -62,10 +61,11 @@ def aggregate_bem(geometry, T_ref):
                 w.writerow([r["p"], r["m"], r["dofs"], r["secs"], r["mem"],
                             f"{r['cond']:.6e}", f"{r['norm']:.6e}", f"{r['recip']:.6e}"])
         else:
-            w.writerow(["p", "m", "dofs", "secs", "mem_kb", "cond", "norm", "err"])
+            w.writerow(["p", "m", "dofs", "secs", "mem_kb", "cond", "norm", "recip", "err"])
             for r in runs:
                 w.writerow([r["p"], r["m"], r["dofs"], r["secs"], r["mem"],
-                            f"{r['cond']:.6e}", f"{r['norm']:.6e}", f"{r['err']:.6e}"])
+                            f"{r['cond']:.6e}", f"{r['norm']:.6e}", f"{r['recip']:.6e}",
+                            f"{r['err']:.6e}"])
     print(f"BEM {geometry}: wrote {bem_dir}/results.csv")
 
 
@@ -96,29 +96,19 @@ def aggregate_epgp(epgp_dir, T_ref, is_ellipse):
     for r in runs:
         T = Ts[(r["ns"], r["nb"])]
         r["norm"] = float(np.linalg.norm(T))
+        r["recip"] = reciprocity(T)
         r["err"] = np.linalg.norm(T - T_ref) / nref
-        if is_ellipse:
-            r["recip"] = reciprocity(T)
 
     path = os.path.join(epgp_dir, "results.csv")
     with open(path, "w", newline="") as f:
         w = csv.writer(f)
-        if is_ellipse:
-            w.writerow(["n_spectral", "n_boundary", "dofs", "secs", "mem_kb",
-                        "cond", "norm", "recip", "err"])
-        else:
-            w.writerow(["n_spectral", "n_boundary", "dofs", "secs", "mem_kb",
-                        "cond", "norm", "err"])
+        w.writerow(["n_spectral", "n_boundary", "dofs", "secs", "mem_kb",
+                    "cond", "norm", "recip", "err"])
         for r in runs:
-            row = [r["ns"], r["nb"], r["dofs"], r["secs"], r["mem"],
-                   f"{r['cond']:.6e}", f"{r['norm']:.6e}"]
-            if is_ellipse:
-                row += [f"{r['recip']:.6e}", f"{r['err']:.6e}"]
-                print(f"  EP-GP ns={r['ns']:>5} nb={r['nb']:>5}  recip={r['recip']:.3e}  err={r['err']:.3e}")
-            else:
-                row += [f"{r['err']:.6e}"]
-                print(f"  EP-GP ns={r['ns']:>5} nb={r['nb']:>5}  err={r['err']:.3e}")
-            w.writerow(row)
+            print(f"  EP-GP ns={r['ns']:>5} nb={r['nb']:>5}  recip={r['recip']:.3e}  err={r['err']:.3e}")
+            w.writerow([r["ns"], r["nb"], r["dofs"], r["secs"], r["mem"],
+                        f"{r['cond']:.6e}", f"{r['norm']:.6e}", f"{r['recip']:.6e}",
+                        f"{r['err']:.6e}"])
     print(f"wrote {path}")
 
 

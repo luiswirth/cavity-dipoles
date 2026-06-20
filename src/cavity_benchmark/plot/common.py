@@ -61,7 +61,8 @@ def load_slice(path):
     Escat, Etot = d["Escat"], d["Etot"]
     return {"xs": d["xs"], "zs": d["zs"], "mask": d["mask"],
             "a": float(a), "c": float(c), "src": d["source"],
-            "Einc": Etot - Escat, "Escat": Escat, "Etot": Etot}
+            "Einc": Etot - Escat, "Escat": Escat, "Etot": Etot,
+            "Escat_std": d["Escat_std"]}
 
 
 def emag(E):

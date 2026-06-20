@@ -16,19 +16,20 @@ FIELD_SLICES = [
 
 AGG = "cavity_benchmark.results.aggregate"
 CONV = "cavity_benchmark.plot.convergence"
+PARETO = "cavity_benchmark.plot.pareto"
 FLD = "cavity_benchmark.plot.field"
 
 DATA = [[AGG]]
-BENCH = [[CONV]]
+BENCH = [[CONV], [PARETO]]
 
 
-def field_steps(npz, prefix, animate):
+def field_steps(npz, prefix, modes, animate):
     ext = "webp" if animate else "png"
     anim = ["--animate"] if animate else []
     suffix = "_anim" if animate else ""
     return [[FLD, npz, "--mode", m, *anim,
              "--out", os.path.join(FIGS, f"{prefix}_{m}{suffix}.{ext}")]
-            for m in MODES]
+            for m in modes]
 
 
 def run(step):
@@ -56,9 +57,9 @@ def main():
                           file=sys.stderr)
                     sys.exit(1)
                 continue
-            steps += field_steps(npz, prefix, animate=False)
+            steps += field_steps(npz, prefix, MODES + ["std"], animate=False)
             if not args.skip_anim:
-                steps += field_steps(npz, prefix, animate=True)
+                steps += field_steps(npz, prefix, MODES, animate=True)
 
     for s in steps:
         run(s)
