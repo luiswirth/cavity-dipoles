@@ -16,7 +16,7 @@ from .common import FIGS, setup_style
 def load(geometry):
     path = os.path.join("out", "epgp", "ksweep", geometry, "ksweep.csv")
     if not os.path.exists(path):
-        return None
+        raise SystemExit(f"no ksweep data in out/epgp/ksweep/{geometry}")
     with open(path) as f:
         rows = list(csv.DictReader(f))
     ks = [float(r["k"]) for r in rows]
@@ -26,25 +26,23 @@ def load(geometry):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--out", default=os.path.join(FIGS, "ksweep.svg"))
+    ap.add_argument("--geometry", choices=["sphere", "ellipse"], default="sphere")
+    ap.add_argument("--out", default=None)
     args = ap.parse_args()
+
+    ks, cond = load(args.geometry)
 
     setup_style()
     fig, ax = plt.subplots(figsize=(7.0, 5.0))
-    for geometry, style in (("ellipse", "o-"), ("sphere", "s--")):
-        data = load(geometry)
-        if data is None:
-            continue
-        ks, cond = data
-        ax.semilogy(ks, cond, style, ms=3, label=geometry)
+    ax.semilogy(ks, cond, "o-", ms=3)
     ax.set_xlabel(r"wavenumber $k$")
     ax.set_ylabel("conditioning number")
-    ax.legend()
 
     os.makedirs(FIGS, exist_ok=True)
-    fig.savefig(args.out)
+    out = args.out or os.path.join(FIGS, f"{args.geometry}_ksweep.svg")
+    fig.savefig(out)
     plt.close(fig)
-    print(f"wrote {args.out}")
+    print(f"wrote {out}")
 
 
 if __name__ == "__main__":

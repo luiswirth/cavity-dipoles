@@ -59,10 +59,11 @@ def noise_steps(geometry):
              "--out", os.path.join(FIGS, f"{geometry}_noise.svg")]]
 
 
-def ksweep_steps():
-    if not glob.glob(os.path.join("out", "epgp", "ksweep", "*", "ksweep.csv")):
+def ksweep_steps(geometry):
+    if not os.path.exists(os.path.join("out", "epgp", "ksweep", geometry, "ksweep.csv")):
         return []
-    return [[KSWEEP, "--out", os.path.join(FIGS, "ksweep.svg")]]
+    return [[KSWEEP, "--geometry", geometry,
+             "--out", os.path.join(FIGS, f"{geometry}_ksweep.svg")]]
 
 
 def run(step):
@@ -100,7 +101,8 @@ def main():
             steps += uq_steps(geometry)
             steps += noise_steps(geometry)
 
-    steps += ksweep_steps()
+    for geometry in GEOMETRIES:
+        steps += ksweep_steps(geometry)
 
     for s in steps:
         run(s)
