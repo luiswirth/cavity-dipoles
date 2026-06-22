@@ -17,3 +17,5 @@ rsync -av --mkpath --exclude=work/ --exclude=logs/ "$REMOTE/cavity-epgp/out/nois
 rsync -av --mkpath --exclude=work/ --exclude=logs/ "$REMOTE/cavity-epgp/out/noise/sphere/"  out/epgp/noise/sphere/
 rsync -av --mkpath --exclude=work/ --exclude=logs/ "$REMOTE/cavity-epgp/out/ksweep/ellipse/" out/epgp/ksweep/ellipse/
 rsync -av --mkpath --exclude=work/ --exclude=logs/ "$REMOTE/cavity-epgp/out/ksweep/sphere/"  out/epgp/ksweep/sphere/
+rsync -av --mkpath --exclude=work/ --exclude=logs/ "$REMOTE/cavity-bem/out/ksweep/ellipse/"  out/bem/ksweep/ellipse/
+rsync -av --mkpath --exclude=work/ --exclude=logs/ "$REMOTE/cavity-bem/out/ksweep/sphere/"   out/bem/ksweep/sphere/
