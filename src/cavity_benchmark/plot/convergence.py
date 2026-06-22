@@ -126,7 +126,7 @@ def main():
              "epgp_convergence", "operator_spectrum",
              "bem_reciprocity", "epgp_reciprocity", "epgp_vs_bem",
              "bem_convergence", "ellipse_convergence", "sphere_convergence",
-             "epgp_ksweep", "sphere_ksweep", "sphere_multipole",
+             "sphere_multipole",
              "ellipse_bem_convergence", "ellipse_epgp_convergence",
              "sphere_epgp_convergence", "ellipse_epgp_rate", "sphere_epgp_rate",
              "ellipse_epgp_field_real", "ellipse_epgp_field_phase",

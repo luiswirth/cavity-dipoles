@@ -11,6 +11,7 @@ MODES = ["real", "phase", "lic"]
 # operator) and the noise-influence sweep. Each renders only when its data exists.
 OPERATOR = "cavity_benchmark.plot.operator"
 NOISE = "cavity_benchmark.plot.noise"
+KSWEEP = "cavity_benchmark.plot.ksweep"
 GEOMETRIES = ["ellipse", "sphere"]
 
 # Field slices to render: (npz file, output prefix, required). The ellipsoidal
@@ -58,6 +59,12 @@ def noise_steps(geometry):
              "--out", os.path.join(FIGS, f"{geometry}_noise.svg")]]
 
 
+def ksweep_steps():
+    if not glob.glob(os.path.join("out", "epgp", "ksweep", "*", "ksweep.csv")):
+        return []
+    return [[KSWEEP, "--out", os.path.join(FIGS, "ksweep.svg")]]
+
+
 def run(step):
     print(f"\n=== {' '.join(step)} ===", flush=True)
     subprocess.run([sys.executable, "-m", step[0], *step[1:]], check=True)
@@ -92,6 +99,8 @@ def main():
         for geometry in GEOMETRIES:
             steps += uq_steps(geometry)
             steps += noise_steps(geometry)
+
+    steps += ksweep_steps()
 
     for s in steps:
         run(s)
