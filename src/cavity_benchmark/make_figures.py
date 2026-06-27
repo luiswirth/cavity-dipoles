@@ -12,8 +12,8 @@ KSWEEP = "cavity_benchmark.plot.ksweep"
 GEOMETRIES = ["ellipse", "sphere"]
 
 FIELD_SLICES = [
-    (os.path.join("out", "epgp", "ref", "ellipse", "field.npz"), "epgp_ellipse_field", True),
-    (os.path.join("out", "epgp", "ref", "sphere", "field.npz"), "epgp_sphere_field", False),
+    (os.path.join("out", "epgp", "field", "ellipse", "field.npz"), "epgp_ellipse_field", True),
+    (os.path.join("out", "epgp", "field", "sphere", "field.npz"), "epgp_sphere_field", False),
 ]
 
 AGG = "cavity_benchmark.results.aggregate"
@@ -39,10 +39,10 @@ def _has_sigma(d):
 
 
 def uq_steps(geometry):
-    ref = os.path.join("out", "epgp", "ref", geometry)
-    if not _has_sigma(ref):
+    field = os.path.join("out", "epgp", "field", geometry)
+    if not _has_sigma(field):
         return []
-    return [[OPERATOR, "--geometry", geometry, "--uq-dir", ref,
+    return [[OPERATOR, "--geometry", geometry, "--uq-dir", field,
              "--out", os.path.join(FIGS, f"{geometry}_uq_operator.png")]]
 
 

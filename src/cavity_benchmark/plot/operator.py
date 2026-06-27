@@ -41,7 +41,7 @@ def main():
     ap.add_argument("--out", default=None)
     args = ap.parse_args()
 
-    uq_dir = args.uq_dir or os.path.join("out", "epgp", "ref", args.geometry)
+    uq_dir = args.uq_dir or os.path.join("out", "epgp", "field", args.geometry)
     runs = available_runs(uq_dir)
     if not runs:
         raise SystemExit(f"no Sigma_*.npy in {uq_dir}")

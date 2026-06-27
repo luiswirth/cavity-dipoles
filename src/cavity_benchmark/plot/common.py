@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 FIGS = os.path.join("out", "figs")
-DEFAULT_NPZ = os.path.join("out", "epgp", "ref", "ellipse", "field.npz")
+DEFAULT_NPZ = os.path.join("out", "epgp", "field", "ellipse", "field.npz")
 FIGSIZE = (10.5, 6.2)
 COMP = 0
 COMP_LABEL = {0: "x", 1: "y", 2: "z"}

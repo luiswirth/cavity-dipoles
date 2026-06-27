@@ -20,15 +20,13 @@ pull() {  # pull <remote-subpath> <local-dest>
   fi
 }
 
-for solver in bem epgp; do
-  for mode in grid ref ksweep; do
-    for geom in ellipse sphere; do
-      pull "cavity-$solver/out/$mode/$geom" "out/$solver/$mode/$geom"
-    done
-  done
-done
 for geom in ellipse sphere; do
-  pull "cavity-epgp/out/noise/$geom" "out/epgp/noise/$geom"
+  for mode in grid ksweep; do
+    pull "cavity-bem/out/$mode/$geom" "out/bem/$mode/$geom"
+  done
+  for mode in grid field ksweep noise; do
+    pull "cavity-epgp/out/$mode/$geom" "out/epgp/$mode/$geom"
+  done
 done
 
 exit $rc
