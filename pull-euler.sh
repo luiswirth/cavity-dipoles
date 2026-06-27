@@ -1,9 +1,14 @@
 #!/bin/bash
-# Pull solver outputs from Euler into cavity-benchmark/out/.
-# Run from the cavity-benchmark root. Missing/failed sources are warned about
-# and skipped, so one absent run does not abort the whole pull.
+# Collect solver outputs into cavity-benchmark/out/. Run from the repo root.
+# Missing/failed sources are warned about and skipped, so one absent run does
+# not abort the whole pull.
+#
+# REMOTE is the rsync source root holding the solver repos. Defaults to ETH
+# Euler; override to gather results produced anywhere, e.g.:
+#   REMOTE=..              ./pull-euler.sh   # local sibling checkouts (semproj/)
+#   REMOTE=other:~/semproj ./pull-euler.sh   # another cluster/host
 set -uo pipefail
-REMOTE="euler:~/semproj"
+REMOTE="${REMOTE:-euler:~/semproj}"
 rc=0
 
 pull() {  # pull <remote-subpath> <local-dest>

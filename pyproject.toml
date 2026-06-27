@@ -20,4 +20,6 @@ requires = ["uv_build>=0.11.17,<0.12.0"]
 build-backend = "uv_build"
 
 [tool.uv.sources]
-cavity-epgp = { git = "ssh://git@github.com/luiswirth/cavity-epgp.git", branch = "main" }
+# https so a fresh clone resolves without a GitHub SSH key. For local development
+# against a sibling checkout, override with: cavity-epgp = { path = "../cavity-epgp", editable = true }
+cavity-epgp = { git = "https://github.com/luiswirth/cavity-epgp.git", branch = "main" }
