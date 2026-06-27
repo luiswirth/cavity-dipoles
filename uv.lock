@@ -37,7 +37,7 @@ requires-dist = [
 [[package]]
 name = "cavity-epgp"
 version = "0.1.0"
-source = { git = "https://github.com/luiswirth/cavity-epgp.git?branch=main#e5207496875526499530d9861bbb8807f3825143" }
+source = { git = "https://github.com/luiswirth/cavity-epgp.git?branch=main#c9e7e2ebdb10dc2a2a1f91361a22e62f3de462d9" }
 dependencies = [
     { name = "jax" },
     { name = "maxwellgp" },
@@ -377,7 +377,7 @@ wheels = [
 [[package]]
 name = "maxwellgp"
 version = "0.1.0"
-source = { git = "ssh://git@github.com/luiswirth/maxwellgp.git?branch=main#3943d35f238968dc0b46184ab796430a641a502a" }
+source = { git = "https://github.com/luiswirth/maxwellgp.git?branch=main#274cc97a7a69d5950ce49d71f9bf71bb8cd65018" }
 dependencies = [
     { name = "equinox" },
     { name = "jax" },
