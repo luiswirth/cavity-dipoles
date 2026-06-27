@@ -38,7 +38,7 @@ The figures and result CSVs are pulled into the thesis with `epgp-thesis/pull-re
 
 ## Collecting results
 
-`pull-euler.sh` rsyncs the solver `out/{mode}/{shape}/` dirs (bem: `grid`, `ksweep`;
+`pull-euler.sh` rsyncs the solver `out/{mode}/{shape}/` dirs (bem: `grid`;
 epgp: `grid`, `field`, `ksweep`, `noise`) from `$REMOTE` into
 `out/{bem,epgp}/{mode}/{shape}/`. `REMOTE` is any rsync source root holding the two
 solver repos: the Euler login node by default, a local parent directory for a fully

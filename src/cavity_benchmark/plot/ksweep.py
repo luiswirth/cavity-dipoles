@@ -16,20 +16,15 @@ from ..benchmark import config_path
 from .common import FIGS, setup_style
 
 
-def load(solver, geometry):
-    path = os.path.join("out", solver, "ksweep", geometry, "ksweep.csv")
+def load(geometry):
+    path = os.path.join("out", "epgp", "ksweep", geometry, "ksweep.csv")
     if not os.path.exists(path):
         raise SystemExit(f"no ksweep data in {path}")
     with open(path) as f:
         rows = list(csv.DictReader(f))
     ks = [float(r["k"]) for r in rows]
-    if "sigma_min" in rows[0]:
-        vals = [float(r["sigma_min"]) for r in rows]
-        ylabel = r"$\sigma_\mathrm{min}$"
-    else:
-        vals = [float(r["cond"]) for r in rows]
-        ylabel = "condition number"
-    return ks, vals, ylabel
+    vals = [float(r["sigma_min"]) for r in rows]
+    return ks, vals
 
 
 def sphere_resonances(R, kmin, kmax, lmax=12):
@@ -50,12 +45,11 @@ def sphere_resonances(R, kmin, kmax, lmax=12):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--solver", choices=["epgp", "bem"], default="epgp")
     ap.add_argument("--geometry", choices=["sphere", "ellipse"], default="sphere")
     ap.add_argument("--out", default=None)
     args = ap.parse_args()
 
-    ks, vals, ylabel = load(args.solver, args.geometry)
+    ks, vals = load(args.geometry)
     k_bench = float(load_config(config_path(args.geometry))[0])
 
     setup_style()
@@ -70,11 +64,11 @@ def main():
     ax.axvline(k_bench, color="C1", ls="-", lw=1.5, zorder=1, label=f"$k={k_bench:g}$")
     ax.semilogy(ks, vals, "-", zorder=2)
     ax.set_xlabel(r"wavenumber $k$")
-    ax.set_ylabel(ylabel)
+    ax.set_ylabel(r"$\sigma_\mathrm{min}$")
     ax.legend()
 
     os.makedirs(FIGS, exist_ok=True)
-    out = args.out or os.path.join(FIGS, f"{args.geometry}_{args.solver}_ksweep.svg")
+    out = args.out or os.path.join(FIGS, f"{args.geometry}_epgp_ksweep.svg")
     fig.savefig(out)
     plt.close(fig)
     print(f"wrote {out}")
