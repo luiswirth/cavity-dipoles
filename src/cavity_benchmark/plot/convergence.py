@@ -63,17 +63,26 @@ def _bem_conv_fig(rows, ycol, ylabel, savename, fmt):
     ms_all = sorted({r["m"] for r in rows})
     ps_all = sorted({r["p"] for r in rows})
 
+    # h-refinement: log-log error vs DOFs, so algebraic convergence is a straight line
+    all_x, all_y = [], []
     for i, p in enumerate(ps_all):
         rs = sorted((r for r in rows if r["p"] == p and r[ycol] > 0), key=lambda r: r["m"])
         if len(rs) < 2:
             continue
-        ax[0].semilogy([r["m"] for r in rs], [r[ycol] for r in rs],
-                       "D-", color=cmap(i / max(len(ps_all) - 1, 1)),
-                       mec="white", mew=0.8, label=f"$p={p}$")
-    ax[0].set_xlabel(r"mesh level $m$"); ax[0].set_ylabel(ylabel)
+        xs = [r["dofs"] for r in rs]; ys = [r[ycol] for r in rs]
+        all_x += xs; all_y += ys
+        ax[0].loglog(xs, ys, "D-", color=cmap(i / max(len(ps_all) - 1, 1)),
+                     mec="white", mew=0.8, label=f"$p={p}$")
+    if all_x:  # algebraic reference slope, anchored above the data
+        x0, x1 = min(all_x), max(all_x)
+        y0 = max(all_y)
+        ax[0].plot([x0, x1], [y0, y0 * (x1 / x0) ** -1.5],
+                   "k--", lw=1.0, alpha=0.6, label=r"$\propto N^{-3/2}$")
+    ax[0].set_xlabel(r"degrees of freedom $N$"); ax[0].set_ylabel(ylabel)
     ax[0].set_title(r"$h$-refinement"); ax[0].legend(frameon=False, ncol=2)
-    ax[0].set_xticks(ms_all); _grid(ax[0])
+    _grid(ax[0])
 
+    # p-refinement: semilog error vs p, so geometric convergence is a straight line
     for i, m in enumerate(ms_all):
         rs = sorted((r for r in rows if r["m"] == m and r[ycol] > 0), key=lambda r: r["p"])
         if len(rs) < 2:
@@ -92,7 +101,7 @@ def fig_bem_ellipse_convergence(fmt="svg"):
     path = os.path.join(BEM_ELLIPSE, "results.csv")
     if not os.path.exists(path):
         return
-    rows = [{"p": int(r["p"]), "m": int(r["m"]), "recip": float(r["recip"])}
+    rows = [{"p": int(r["p"]), "m": int(r["m"]), "dofs": int(r["dofs"]), "recip": float(r["recip"])}
             for r in read_csv(path)]
     _bem_conv_fig(rows, "recip", L_RHO, "bem_ellipse_convergence", fmt)
 
@@ -101,7 +110,7 @@ def fig_bem_sphere_convergence(fmt="svg"):
     path = os.path.join(BEM_SPHERE, "results.csv")
     if not os.path.exists(path):
         return
-    rows = [{"p": int(r["p"]), "m": int(r["m"]), "err": float(r["err"])}
+    rows = [{"p": int(r["p"]), "m": int(r["m"]), "dofs": int(r["dofs"]), "err": float(r["err"])}
             for r in read_csv(path)]
     _bem_conv_fig(rows, "err", L_ERR, "bem_sphere_convergence", fmt)
 

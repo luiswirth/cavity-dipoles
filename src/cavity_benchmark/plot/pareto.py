@@ -69,7 +69,7 @@ def _panel(ax, bem_rows, epgp_rows, ycol, ylabel, title):
     env_s, env_e = epgp_envelope(epgp_rows, ycol)
     if len(env_s) >= 2:
         ax.plot(env_s, env_e, "D-", color=C_EPGP, lw=2.2, ms=5,
-                mec="white", mew=0.6, label="EP-GP", zorder=3)
+                mec="white", mew=0.6, label="EPGP", zorder=3)
 
     ax.set_xscale("log"); ax.set_yscale("log")
     ax.set_xlabel("wall time [s]"); ax.set_ylabel(ylabel)

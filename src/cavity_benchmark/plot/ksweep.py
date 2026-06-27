@@ -59,16 +59,16 @@ def main():
     k_bench = float(load_config(config_path(args.geometry))[0])
 
     setup_style()
-    fig, ax = plt.subplots(figsize=(7.0, 5.0))
+    fig, ax = plt.subplots(figsize=(6.4, 4.6), layout="constrained")
 
     if args.geometry == "sphere":
         R = float(load_config(config_path("sphere"))[1][0])
         for j, kr in enumerate(sphere_resonances(R, min(ks), max(ks))):
-            ax.axvline(kr, color="0.6", ls="--", lw=0.8, zorder=0,
+            ax.axvline(kr, color="0.75", ls="--", lw=0.9, zorder=0,
                        label="analytic resonance" if j == 0 else None)
 
-    ax.axvline(k_bench, color="C1", ls="-", lw=1.2, zorder=1, label=f"$k={k_bench:g}$")
-    ax.semilogy(ks, vals, "o-", ms=3, zorder=2)
+    ax.axvline(k_bench, color="C1", ls="-", lw=1.5, zorder=1, label=f"$k={k_bench:g}$")
+    ax.semilogy(ks, vals, "-", zorder=2)
     ax.set_xlabel(r"wavenumber $k$")
     ax.set_ylabel(ylabel)
     ax.legend()

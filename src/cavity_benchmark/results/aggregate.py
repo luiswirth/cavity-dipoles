@@ -96,7 +96,7 @@ def aggregate_epgp(epgp_dir, T_ref):
         w.writerow(["n_spectral", "n_boundary", "dofs", "secs", "mem_kb",
                     "cond", "norm", "recip", "err"])
         for r in runs:
-            print(f"  EP-GP ns={r['ns']:>5} nb={r['nb']:>5}  recip={r['recip']:.3e}  err={r['err']:.3e}")
+            print(f"  EPGP ns={r['ns']:>5} nb={r['nb']:>5}  recip={r['recip']:.3e}  err={r['err']:.3e}")
             w.writerow([r["ns"], r["nb"], r["dofs"], r["secs"], r["mem"],
                         f"{r['cond']:.6e}", f"{r['norm']:.6e}", f"{r['recip']:.6e}",
                         f"{r['err']:.6e}"])
@@ -132,7 +132,7 @@ def main():
     if os.path.exists(os.path.join(epgp_dir, "manifest.csv")):
         aggregate_epgp(epgp_dir, T_ref)
     else:
-        print(f"(no EP-GP manifest in {epgp_dir}/; run epgp-grid)")
+        print(f"(no EPGP manifest in {epgp_dir}/; run epgp-grid)")
 
 
 if __name__ == "__main__":

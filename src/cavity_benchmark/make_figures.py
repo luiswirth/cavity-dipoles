@@ -21,7 +21,7 @@ CONV = "cavity_benchmark.plot.convergence"
 PARETO = "cavity_benchmark.plot.pareto"
 FLD = "cavity_benchmark.plot.field"
 
-DATA = [[AGG]]
+DATA = [[AGG], [AGG, "--geometry", "sphere"]]
 BENCH = [[CONV], [PARETO]]
 
 
