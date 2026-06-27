@@ -6,17 +6,11 @@ import sys
 
 FIGS = os.path.join("out", "figs")
 MODES = ["real", "phase", "lic"]
-
-# UQ figures: the operator value+uncertainty heatmap (from the high-fidelity ref
-# operator) and the noise-influence sweep. Each renders only when its data exists.
 OPERATOR = "cavity_benchmark.plot.operator"
 NOISE = "cavity_benchmark.plot.noise"
 KSWEEP = "cavity_benchmark.plot.ksweep"
 GEOMETRIES = ["ellipse", "sphere"]
 
-# Field slices to render: (npz file, output prefix, required). The ellipsoidal
-# cavity is the default benchmark; the spherical cavity is rendered too when its
-# slice exists.
 FIELD_SLICES = [
     (os.path.join("out", "epgp", "ref", "ellipse", "field.npz"), "epgp_ellipse_field", True),
     (os.path.join("out", "epgp", "ref", "sphere", "field.npz"), "epgp_sphere_field", False),

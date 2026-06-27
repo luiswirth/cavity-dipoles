@@ -1,19 +1,3 @@
-"""Analytic reaction operator for a PEC spherical cavity (ground truth).
-
-Independent multipole solver. It projects the dipole incident field's tangential
-trace on the spherical wall (radius R) onto vector spherical harmonics, applies
-the interior PEC reflection relations, and reads the scattered tangential trace
-back on the measurement sphere Lambda (radius a). It serves as an exact reference
-for the EPGP solver and corroborates the closed-form derivation in the thesis
-appendix. A single consistent vector-spherical-harmonic normalization is used
-throughout, so the operator is independent of the overall constant the appendix
-carries symbolically.
-
-Conventions match the rest of the project: time dependence e^{-i omega t}, so the
-fundamental solution is outgoing with e^{+i k r}, and the dipole field is the
-dyadic Green's function of analytic.incident_field_batch.
-"""
-
 import numpy as np
 from scipy.special import roots_legendre, sph_harm_y, spherical_jn
 
@@ -21,11 +5,7 @@ from cavity_epgp import incident_field_batch
 
 
 def _quadrature(n_theta, n_phi):
-    """Product Gauss-Legendre (in cos theta) times uniform phi grid on S^2.
-
-    Returns flattened (theta, phi, weights) with sum(weights f) = integral over
-    the unit sphere. Gauss nodes are interior, so sin theta != 0 anywhere.
-    """
+    # Gauss-Legendre nodes are interior, so sin(theta) != 0 at any quadrature point.
     x, wx = roots_legendre(n_theta)
     theta = np.arccos(x)
     phi = 2.0 * np.pi * np.arange(n_phi) / n_phi
@@ -43,11 +23,6 @@ def _frames(theta, phi):
 
 
 def _vsh(l, theta, phi):
-    """Tangential vector spherical harmonics Psi_lm, Phi_lm (Cartesian).
-
-    Returns arrays of shape (2l+1, npts, 3) indexed by m = -l..l. Uses the ladder
-    relation for d/dtheta Y_l^m, which is pole-free.
-    """
     npts = theta.size
     ms = np.arange(-l, l + 1)
     Y = np.stack([sph_harm_y(l, int(m), theta, phi) for m in ms])  # (2l+1, npts)
@@ -94,8 +69,6 @@ def _defaults(k, R, L_max, n_theta, n_phi):
 
 
 def _contract(y, e1, e2):
-    """Tangent-frame projection of the response field y (n_cfg, N, 3) into the
-    (2N, 2N) operator, interleaving the two polarizations per point."""
     n_cfg = y.shape[0]
     T = np.empty((n_cfg, n_cfg), dtype=complex)
     T[0::2] = np.einsum("xc,sxc->xs", e1, y)
@@ -104,13 +77,6 @@ def _contract(y, e1, e2):
 
 
 def _degree_responses(k, R, points, e1, e2, a, L_max, n_theta, n_phi):
-    """Yield (l, y_l): the degree-l tangential scattered response on Lambda,
-    shape (2N, N, 3), in the same (point, polarization) source ordering.
-
-    The benchmark conditions on Pi_t E and measures q . E^s (dipole transmit,
-    dipole receive), so we work with the tangential projection throughout rather
-    than the rotated n x E trace.
-    """
     points = np.asarray(points, dtype=float)
     dirs = points / np.linalg.norm(points, axis=1, keepdims=True)
     N = len(points)
@@ -147,12 +113,6 @@ def _degree_responses(k, R, points, e1, e2, a, L_max, n_theta, n_phi):
 
 def reaction_operator_sphere(k, R, points, e1, e2, a=1.0,
                              L_max=None, n_theta=None, n_phi=None):
-    """Exact reaction operator T for a PEC sphere of radius R.
-
-    points are unit directions on Lambda (radius a); e1, e2 the tangent frame.
-    Returns the (2N, 2N) complex operator in the same (point, polarization)
-    ordering as the EPGP and BEM assemblies.
-    """
     L_max, n_theta, n_phi = _defaults(k, R, L_max, n_theta, n_phi)
     e1, e2 = np.asarray(e1, dtype=float), np.asarray(e2, dtype=float)
     N = len(points)

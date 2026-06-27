@@ -9,11 +9,8 @@ N = 32
 
 
 def fibonacci_sphere(n):
-    # Defines the benchmark Lambda points: written to the config and consumed by
-    # both solvers (the C++ BEM reads them from the config, never regenerating).
-    # Kept independent of maxwellgp.utils.fibonacci_sphere, which is the EPGP's
-    # private boundary-collocation spiral; the two roles must not be conflated,
-    # since changing this spiral would redefine the benchmark.
+    # Intentionally separate from maxwellgp.utils.fibonacci_sphere: changing the
+    # benchmark Lambda spiral would redefine the operator, not just an implementation detail.
     i = np.arange(n) + 0.5
     phi = np.arccos(1.0 - 2.0 * i / n)
     theta = np.pi * (1.0 + 5.0**0.5) * i

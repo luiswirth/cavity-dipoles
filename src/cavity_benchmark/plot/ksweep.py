@@ -1,8 +1,3 @@
-# Wavenumber sweep: reads a solver's per-k condition number
-# (out/{solver}/ksweep/{geometry}/ksweep.csv) and plots it against k. For BEM
-# the spikes mark interior cavity resonances; for EPGP the trend reflects the
-# plane-wave basis conditioning. On the spherical BEM sweep the analytic PEC
-# resonances are overlaid for validation.
 import argparse
 import csv
 import os
@@ -33,9 +28,6 @@ def load(solver, geometry):
 
 
 def sphere_resonances(R, kmin, kmax, lmax=12):
-    """Analytic PEC-sphere interior resonances: TE at zeros of j_l(kR), TM at
-    zeros of [x j_l(x)]'. Each function is sampled, sign changes are bracketed
-    and refined with Brent's method."""
     def psip(l, x):
         return spherical_jn(l, x) + x * spherical_jn(l, x, derivative=True)
 

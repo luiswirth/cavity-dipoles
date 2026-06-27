@@ -1,5 +1,3 @@
-"""Reading EPGP operator runs and their posterior uncertainty."""
-
 import os
 import re
 
@@ -20,5 +18,4 @@ def load_run(uq_dir, ns, nb):
 
 
 def entry_std(Sigma):
-    # per-receiver posterior std: sqrt of the real diagonal of the covariance
     return np.sqrt(np.clip(np.real(np.diag(Sigma)), 0.0, None))

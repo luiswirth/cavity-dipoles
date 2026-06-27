@@ -10,7 +10,7 @@ from .common import (DEFAULT_NPZ, FIGS, align_phase, clip_vmax,
 
 COMP_IN = (0, 2)
 FINE = 1100
-FINE_ANIM = 560  # lower LIC resolution for animation (per-frame recompute)
+FINE_ANIM = 560
 FIGSIZE3 = (15.0, 6.2)
 
 
@@ -57,7 +57,6 @@ def _equalize(tex, mask):
 
 
 def lic_rgb(E, mask, fine=FINE):
-    """LIC-textured, magnitude-shaded RGB image of the in-plane field E."""
     u = np.where(mask, np.real(E[..., COMP_IN[0]]), 0.0)
     v = np.where(mask, np.real(E[..., COMP_IN[1]]), 0.0)
     uf, vf = _upsample(u, fine), _upsample(v, fine)

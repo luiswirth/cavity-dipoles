@@ -19,10 +19,8 @@ def read_csv(path):
 
 
 def bem_staircase(rows, ycol):
-    """Pareto staircase for BEM: non-dominated (secs, err) points, monotone descent."""
     pts = [(float(r["secs"]), float(r.get(ycol, 0))) for r in rows
            if float(r.get(ycol, 0)) > 0 and float(r["secs"]) > 0]
-    # sort by time, keep only monotone improvements in err
     pts.sort(key=lambda x: x[0])
     front = [pts[0]]
     best = pts[0][1]
@@ -40,7 +38,6 @@ def bem_staircase(rows, ycol):
 
 
 def epgp_envelope(rows, ycol):
-    """Best (lowest) ycol per n_spectral, sorted by n_spectral. Returns (secs, err)."""
     by_ns = {}
     for r in rows:
         ns = int(r["n_spectral"])

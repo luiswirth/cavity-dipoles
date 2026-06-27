@@ -14,7 +14,6 @@ from .field_lic import FINE, FINE_ANIM, lic_rgb
 
 PANELS = [("Einc", "i"), ("Escat", "s"), ("Etot", "tot")]
 
-
 def _ext(S):
     return [S["xs"][0], S["xs"][-1], S["zs"][0], S["zs"][-1]]
 
@@ -22,8 +21,6 @@ def _ext(S):
 def _re(Ec, mask, theta, fill):
     return np.where(mask, np.real(Ec * np.exp(-1j * theta)), fill)
 
-
-# --- real part -------------------------------------------------------------
 
 def real_static(fig, ax, S):
     cl = COMP_LABEL[COMP]
@@ -55,8 +52,6 @@ def real_anim(fig, ax, S, frames):
     return update
 
 
-# --- phase (domain coloring) ----------------------------------------------
-
 def _phase_build(ax, S):
     cl = COMP_LABEL[COMP]
     ims = []
@@ -84,8 +79,6 @@ def phase_anim(fig, ax, S, frames):
     return update
 
 
-# --- line-integral-convolution streamlines --------------------------------
-
 def lic_static(fig, ax, S):
     for a_, (key, sup) in zip(ax, PANELS):
         rgb = lic_rgb(align_phase(S[key], S["mask"]), S["mask"], FINE)
@@ -109,8 +102,6 @@ def lic_anim(fig, ax, S, frames):
             im.set_data(lic_rgb(Ec * ph, S["mask"], FINE_ANIM))
     return update
 
-
-# --- posterior uncertainty magnitude --------------------------------------
 
 def std_static(fig, ax, S):
     std = emag(S["Escat_std"])

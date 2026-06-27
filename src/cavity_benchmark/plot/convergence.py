@@ -27,7 +27,6 @@ def _grid(ax):
 
 
 def _epgp_conv_fig(rows, ycol, ylabel, savename, fmt):
-    """Single-panel convergence vs N_s, one line per N_b."""
     nbs = sorted({int(r["n_boundary"]) for r in rows})
     cmap = plt.get_cmap("viridis")
     fig, ax = plt.subplots(figsize=(6.4, 4.6), layout="constrained")
@@ -59,7 +58,6 @@ def fig_epgp_sphere_convergence(fmt="svg"):
 
 
 def _bem_conv_fig(rows, ycol, ylabel, savename, fmt):
-    """Two-panel h- and p-refinement figure for BEM."""
     fig, ax = plt.subplots(1, 2, figsize=(11, 4.4), layout="constrained")
     cmap = plt.get_cmap("viridis")
     ms_all = sorted({r["m"] for r in rows})

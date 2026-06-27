@@ -1,10 +1,3 @@
-"""Analysis step: turn raw generated operators into convergence tables.
-
-Mirrors the generation/analysis split forced by the BEM side. The EPGP operators
-and their raw manifest are produced separately (epgp.convergence); here we add
-derived quantities (norm, recip, err) so downstream plotting never loads operators.
-"""
-
 import argparse
 import csv
 import os
@@ -85,9 +78,7 @@ def read_epgp_manifest(epgp_dir):
     return sorted(rows, key=lambda r: (r["nb"], r["ns"]))
 
 
-def aggregate_epgp(epgp_dir, T_ref, is_ellipse):
-    """Combine the EPGP manifest with the saved operators. Ellipse: recip + err.
-    Sphere: err only (analytic reference, recip unnecessary)."""
+def aggregate_epgp(epgp_dir, T_ref):
     nref = np.linalg.norm(T_ref)
     runs = read_epgp_manifest(epgp_dir)
     Ts = {(r["ns"], r["nb"]): load_epgp(
@@ -139,7 +130,7 @@ def main():
 
     epgp_dir = out_dir(args.geometry)
     if os.path.exists(os.path.join(epgp_dir, "manifest.csv")):
-        aggregate_epgp(epgp_dir, T_ref, is_ellipse)
+        aggregate_epgp(epgp_dir, T_ref)
     else:
         print(f"(no EP-GP manifest in {epgp_dir}/; run epgp-grid)")
 

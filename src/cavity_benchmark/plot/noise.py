@@ -1,6 +1,3 @@
-# Influence of the assumed boundary noise: reads the solver's noise-sweep
-# operators (one level per out/epgp/noise/{geometry}/ln*/) and plots the
-# reconstruction error and total uncertainty against it.
 import argparse
 import glob
 import os

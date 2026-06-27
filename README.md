@@ -6,7 +6,7 @@ Generates shared config, aggregates solver outputs, produces figures.
 ## Workflow
 
     uv run gen-config               # write config -> res/ (rarely needed)
-    # run solvers: euler/submit.sh in each solver repo on Euler
+    # run solvers: euler/submit_grid.sh / submit_ref.sh in each solver repo on Euler
     ./pull-euler.sh                 # rsync results from Euler
     uv run make-figures             # aggregate + all figures
     # in epgp-thesis:

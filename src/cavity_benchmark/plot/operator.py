@@ -23,7 +23,6 @@ def _heatmap(ax, M, title, cmap, norm=None):
 
 
 def operator_figure(T, Sigma):
-    # sigma depends only on the receiver, so it is constant along the transmitter axis
     sigma = np.broadcast_to(entry_std(Sigma)[:, None], T.shape)
     fig, ax = plt.subplots(1, 2, figsize=(11.5, 5.2))
     im0 = _heatmap(ax[0], np.abs(T), r"reaction operator $|T|$", "viridis")
