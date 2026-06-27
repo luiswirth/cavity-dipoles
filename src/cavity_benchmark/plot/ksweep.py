@@ -23,8 +23,13 @@ def load(solver, geometry):
     with open(path) as f:
         rows = list(csv.DictReader(f))
     ks = [float(r["k"]) for r in rows]
-    cond = [float(r["cond"]) for r in rows]
-    return ks, cond
+    if "sigma_min" in rows[0]:
+        vals = [float(r["sigma_min"]) for r in rows]
+        ylabel = r"$\sigma_\mathrm{min}$"
+    else:
+        vals = [float(r["cond"]) for r in rows]
+        ylabel = "condition number"
+    return ks, vals, ylabel
 
 
 def sphere_resonances(R, kmin, kmax, lmax=12):
@@ -50,22 +55,23 @@ def main():
     ap.add_argument("--out", default=None)
     args = ap.parse_args()
 
-    ks, cond = load(args.solver, args.geometry)
+    ks, vals, ylabel = load(args.solver, args.geometry)
+    k_bench = float(load_config(config_path(args.geometry))[0])
 
     setup_style()
     fig, ax = plt.subplots(figsize=(7.0, 5.0))
 
-    if args.solver == "bem" and args.geometry == "sphere":
+    if args.geometry == "sphere":
         R = float(load_config(config_path("sphere"))[1][0])
         for j, kr in enumerate(sphere_resonances(R, min(ks), max(ks))):
             ax.axvline(kr, color="0.6", ls="--", lw=0.8, zorder=0,
                        label="analytic resonance" if j == 0 else None)
 
-    ax.semilogy(ks, cond, "o-", ms=3, zorder=2)
+    ax.axvline(k_bench, color="C1", ls="-", lw=1.2, zorder=1, label=f"$k={k_bench:g}$")
+    ax.semilogy(ks, vals, "o-", ms=3, zorder=2)
     ax.set_xlabel(r"wavenumber $k$")
-    ax.set_ylabel("conditioning number")
-    if ax.get_legend_handles_labels()[1]:
-        ax.legend()
+    ax.set_ylabel(ylabel)
+    ax.legend()
 
     os.makedirs(FIGS, exist_ok=True)
     out = args.out or os.path.join(FIGS, f"{args.geometry}_{args.solver}_ksweep.svg")
